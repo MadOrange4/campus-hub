@@ -18,5 +18,5 @@ uvicorn main:app --reload --port 8000
 ## Where its hosted
 
 ```
-"http://localhost:5173"
+http://localhost:5173
 ```
