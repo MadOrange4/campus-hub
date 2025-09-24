@@ -1,0 +1,43 @@
+:root {
+  /* UMass Amherst brand (light) */
+  --brand:        136 28 28;   /* #881C1C UMass Maroon */
+  --brand-600:    107 21 21;   /* #6B1515 */
+  --brand-700:     76 15 15;   /* #4C0F0F */
+
+  /* Accent & status */
+  --accent:       245 158 11;  /* #F59E0B (amber-500) */
+  --success:       22 163 74;  /* #16A34A */
+  --info:          37  99 235; /* #2563EB */
+  --warning:      234 179   8; /* amber-400 */
+  --danger:       220  38  38; /* red-600 */
+
+  /* Semantic surfaces/text (light mode) */
+  --surface:      255 255 255; /* cards, panels */
+  --background:   250 250 250; /* page bg */
+  --muted:        241 245 249; /* subtle bg */
+  --border:       226 232 240; /* lines */
+  --text:          23  23  23; /* primary text */
+  --text-muted:   100 116 139; /* secondary text */
+}
+
+.dark {
+  /* UMass Amherst brand (dark) — same hues, just used on dark surfaces */
+  --brand:        156 48 48;
+  --brand-600:    184  60 60;  /* slightly lighter for contrast on dark */
+  --brand-700:    220  96 96;
+
+  /* Accent & status (tweak for dark contrast if desired) */
+  --accent:       245 158 11;
+  --success:       34 197  94;
+  --info:          59 130 246;
+  --warning:      250 204  21;
+  --danger:       248 113 113;
+
+  /* Semantic surfaces/text (dark mode) */
+  --surface:       23  23  23; /* panels */
+  --background:     18  18  18; /* page bg */
+  --muted:         38  38  38;
+  --border:        64  64  64;
+  --text:         244 244 245;
+  --text-muted:   161 161 170;
+}
