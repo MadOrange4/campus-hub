@@ -57,4 +57,48 @@ export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/secrets/firebase.json"
 
 # Start server:
 uvicorn main:app --reload --port 8000
+
+#The backend runs at http://localhost:8000.
+#CORS is configured for http://localhost:5173.
 ```
+
+## 2. Frontend - React
+### Setup & Run
+
+```
+cd frontend
+npm install
+npm run dev
+```
+
+### Firebase Client Config
+If `frontend/src/lib/firebase.ts` already has config, you’re good.
+
+If not, reach me.
+
+## 3. Admin Set-up
+Event creation is only available for user accounts with the **admin** role.
+
+Event deletion is **unavailable** for testing.
+ *(data corruption problem)*
+
+ ## 4. Friend System
+- Friends:
+    - users/{uid}/friends/{friendUid} → { uid, since, name?, photoURL? }
+- Requests:
+    - users/{recipientUid}/friendRequests/{fromUid} → { createdAt }
+- Backend endpoints:
+    - **GET** /friends — list friends
+	- **GET** /friends/requests — list requests
+	- **POST** /friends/requests/{toUid} — send request
+	- **POST** /friends/requests/{fromUid}/accept — accept
+	- **POST** /friends/requests/{fromUid}/decline — decline
+	- **DELETE** /friends/{friendUid} — unfriend
+
+## 5. First Run Checklist
+**1.** Pull the repo.
+**2.** Put backend/secrets/firebase.json in place.
+**3.**	Start the backend (`uvicorn main:app --reload --port 8000`).
+**4.**	Start the frontend (`npm run dev`).
+**5.**	Sign in with your @umass.edu account.
+**6.**	For event creation, get your admin claim set.
