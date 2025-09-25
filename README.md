@@ -96,9 +96,9 @@ Event deletion is **unavailable** for testing.
 	- **DELETE** /friends/{friendUid} — unfriend
 
 ## 5. First Run Checklist
-**1.** Pull the repo.
-**2.** Put backend/secrets/firebase.json in place.
-**3.**	Start the backend (`uvicorn main:app --reload --port 8000`).
-**4.**	Start the frontend (`npm run dev`).
-**5.**	Sign in with your @umass.edu account.
-**6.**	For event creation, get your admin claim set.
+**1.** Pull the repo.\
+**2.** Put backend/secrets/firebase.json in place.\
+**3.**	Start the backend (`uvicorn main:app --reload --port 8000`).\
+**4.**	Start the frontend (`npm run dev`).\
+**5.**	Sign in with your @umass.edu account.\
+**6.**	For event creation, get your admin claim set.\
