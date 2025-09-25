@@ -42,11 +42,29 @@
   }
 }
 
-/* 4) You can add component helpers here if you like:
-@layer components {
-  .card { @apply bg-surface border border-border rounded-2xl shadow-soft; }
-  .btn { @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl font-medium; }
-  .btn-primary { @apply btn bg-brand text-background hover:bg-brand-600; }
-  .btn-outline { @apply btn border border-border bg-surface hover:bg-muted; }
+/* Dark canvas & subtle glow look */
+.leaflet-container {
+  filter: saturate(1.05) contrast(1.02);
+  background: radial-gradient(1200px 600px at 20% 0%, #0b1020, #0a0f1a 60%, #070b14);
 }
-*/
+
+/* Popups and tooltips look nicer against dark maps */
+.leaflet-popup-content-wrapper,
+.leaflet-tooltip {
+  backdrop-filter: blur(6px);
+}
+
+.leaflet-tooltip {
+  background: rgba(17, 24, 39, 0.9);
+  color: #e5e7eb;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+/* Make the circle markers feel like they glow a bit */
+.leaflet-interactive {
+  /* for SVG markers */
+  filter: drop-shadow(0 0 8px rgba(59,130,246,.35));
+}
+

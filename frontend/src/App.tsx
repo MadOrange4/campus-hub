@@ -5,6 +5,10 @@ import Profile from "./pages/Profile";
 import Landing from "./pages/Landing";
 import AppPage from "./pages/App";
 import { useAuth } from "./context/AuthProvider";
+import Register from "./pages/Register";
+import RequireVerified from "./components/RequireVerified";
+import Verify from "./pages/Verify";
+import NewEvent from "./pages/NewEvent";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
@@ -18,8 +22,11 @@ export default function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
-      <Route path="/app" element={<RequireAuth><AppPage /></RequireAuth>} />
+      <Route path="/app" element={<RequireAuth><RequireVerified><AppPage /></RequireVerified></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/verify" element={<Verify />} />
+      <Route path="/events/new" element={<NewEvent />} />
     </Routes>
   );
 }
