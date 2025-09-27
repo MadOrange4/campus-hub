@@ -9,6 +9,7 @@ import Register from "./pages/Register";
 import RequireVerified from "./components/RequireVerified";
 import Verify from "./pages/Verify";
 import NewEvent from "./pages/NewEvent";
+import UserProfilePage from "./pages/UserProfile";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
@@ -27,6 +28,7 @@ export default function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/verify" element={<Verify />} />
       <Route path="/events/new" element={<NewEvent />} />
+      <Route path="/u/:uid" element={<UserProfilePage />} />
     </Routes>
   );
 }

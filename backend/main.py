@@ -399,5 +399,18 @@ def search_users(q: str, decoded: dict = Depends(verify_token)):
 
     return {"results": out}
 
+@friends.get("/status/{other_uid}")
+def status(other_uid: str, decoded: dict = Depends(verify_token)):
+    me = decoded["uid"]
+    me_edge   = _friends_col(me).document(other_uid).get()
+    them_edge = _friends_col(other_uid).document(me).get()
+    incoming  = _requests_col(me).document(other_uid).get()
+    outgoing  = _requests_col(other_uid).document(me).get()
+    return {
+        "friend": me_edge.exists and them_edge.exists,
+        "incomingPending": incoming.exists,
+        "iSentPending": outgoing.exists,
+    }
+
 # Mount router
 app.include_router(friends)

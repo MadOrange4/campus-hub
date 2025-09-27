@@ -556,7 +556,9 @@ export default function AppPage() {
                           )}
 
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium truncate">{meta.name || f.uid}</div>
+                            <div className="font-medium truncate cursor-pointer hover:underline" onClick={() => nav(`/u/${f.uid}`)}>
+                              <div className="font-medium truncate">{meta.name || f.uid}</div>
+                            </div>
                             <div className="text-xs text-text-muted">Friend</div>
                           </div>
 
@@ -592,7 +594,9 @@ export default function AppPage() {
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium truncate">{meta.name || r.fromUid}</div>
+                            <div className="font-medium truncate cursor-pointer hover:underline" onClick={() => nav(`/u/${f.uid}`)}>
+                              <div className="font-medium truncate">{meta.name || r.fromUid}</div>
+                            </div>
                             <div className="text-xs text-text-muted">sent you a request</div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -652,7 +656,9 @@ export default function AppPage() {
                                 </div>
                               )}
                               <div className="flex-1 min-w-0">
-                                <div className="font-medium truncate">{u.name || u.uid}</div>
+                                <div className="font-medium truncate cursor-pointer hover:underline" onClick={() => nav(`/u/${u.uid}`)}>
+                                  <div className="font-medium truncate">{u.name || u.uid}</div>
+                                </div>
                               </div>
                               <button
                                 disabled={disabled}
@@ -1012,7 +1018,7 @@ function EventDetailsModal({
     setErr(null);
     try {
       const myRef = doc(db, "events", eventId, "rsvps", currentUser.uid);
-      await setDoc(myRef, { attending: true, createdAt: serverTimestamp() }, { merge: true });
+      await setDoc(myRef, { uid: currentUser.uid, attending: true, createdAt: serverTimestamp() }, { merge: true });
       setAttending(true);
       setRsvpCount((c) => c + 1);
     } catch (e: any) {
