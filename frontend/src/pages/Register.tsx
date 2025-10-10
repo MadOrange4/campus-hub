@@ -8,6 +8,7 @@ import {
 } from "firebase/auth";
 import { isAllowedEmail } from "../lib/auth-domain";
 import { LogIn, Mail, Eye, EyeOff, UserPlus } from "lucide-react";
+import { setVerifiedPassword } from "../lib/password-strength";
 
 export default function Register() {
   const nav = useNavigate();
@@ -92,7 +93,7 @@ export default function Register() {
                 <input
                   className="w-full rounded-xl border border-border bg-surface px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-brand"
                   value={pw}
-                  onChange={(e) => setPw(e.target.value)}
+                  onChange={(e) => setVerifiedPassword(setPw,e.target.value)}
                   placeholder="••••••••"
                   type={showPw ? "text" : "password"}
                   autoComplete="new-password"
