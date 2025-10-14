@@ -1,17 +1,5 @@
-/**
- * @param password: the password to test
- *
- * @returns an object that has the strength truth value, and an array of issues. {strong, issues}
- *          strong is true iff the password is strong
- *          issues contains issues that make the password weak, or empty strings otherwise.
- *
- * A password is strong iff:
- *   1) is at least 16 characters long
- *   2) contains uppercase, lowercase, number and special characters
- *   3) has sufficient entropy --> IMPORTANT
- *   4) additionally, substrings found in the dictionary should not contribute to password strength
- */
-export function passwordEntropy(password: string): boolean {
+//import {passwordEntropy} from "../lib/password-strength.ts"
+function passwordEntropy(password: string): boolean {
   const alphabetSize = 95;
   const passSize = password.length;
   const charArr: string[] = Array.from(password);
@@ -43,6 +31,7 @@ export function passwordEntropy(password: string): boolean {
   //prevent passwords from being punished for being longer...
   val = (passSize * (E - 1 / alphabetSize)) / val;
 
+
   //Additionally, we want to ensure a fair distribution among the different groups of characters. I.E. a user should not add
   //only one of each: uppercase, number and special character in the password to satisfy requirements.
   const groups = [0, 0, 0, 0];
@@ -60,44 +49,24 @@ export function passwordEntropy(password: string): boolean {
   //special characters are 33/95
   //uppercase and lowercase are 26/95 each
   //digits are 10/95
-  const k1 = groups[0] / 26;
-  const k2 = groups[1] / 26;
-  const k3 = groups[2] / 10;
-  const k4 = groups[3] / 33;
-  const m = (k1 + k2 + k3 + k4) / 4;
+  const k1 = groups[0]/26;
+  const k2 = groups[1]/26;
+  const k3 = groups[2]/10;
+  const k4 = groups[3]/33;
+  const m = (k1+k2+k3+k4)/4;
   let v = 0;
-  [k1, k2, k3, k4].forEach((value) => {
-    v += (value - m) ** 2;
+  [k1,k2,k3,k4].forEach(value => {
+    v+=(value-m)**2;
   });
-  v = v / 3;
-  //therefore we expect the array groups to look something like [26k, 26k, 10k, 33k] for some k.
+  v=v/3;
+  //therefore we expect the array groups to look something like [26k, 26k, 10k, 33k] for some k. 
 
   //magic numbers, hope theyre good...
-  return v < 0.035 && val < 1 + (0.13 * passSize) / 16;
+  return v<.03&&val<1+.1*passSize/16;
 }
-
-export function isStrongPassword(password: string): {
-  strong: boolean;
-  issues: string[];
-} {
-  const one: boolean = password.length > 15;
-  const two: boolean =
-    password.match(/[A-Z]/) != null &&
-    password.match(/[a-z]/) != null &&
-    password.match(/\W/) != null &&
-    password.match(/\d/) != null;
-  //uppercase, lowercase, special character, number respectively.
-  const three: boolean = passwordEntropy(password);
-  const four: boolean = true;
-  const issues: string[] = Array(4);
-  issues[0] = !one ? "Your password is too short.\n" : "";
-  issues[1] = !two
-    ? "Your password is constructed from an alphabet which lacks at least one of uppercase, lowercase, number or special characters (underscore is not a special character).\n"
-    : "";
-  issues[2] = !three ? "Your password has low entropy.\n" : "";
-  issues[3] = "";
-  //TODO: 4
-
-  const strong: boolean = one && two && three && four;
-  return { strong, issues };
+function test_simpleCasePasswordEntropy() {
+  const pw = "password!adb";
+  const entropy = passwordEntropy(pw);
+  console.log(entropy);
 }
+test_simpleCasePasswordEntropy();
