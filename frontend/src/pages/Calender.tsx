@@ -1,19 +1,15 @@
-// src/components/Calendar.tsx
-import { useState } from 'react';
-import './Calendar.css';
+// src/pages/Calendar.tsx
+import { useNavigate } from 'react-router-dom';
+import "../calender.css";
 
 interface CalendarProps {
-  isOpen: boolean;
-  onClose: () => void;
+  currentDate: Date;
+  setCurrentDate: (date: Date) => void;
   onDateSelect: (date: Date) => void;
 }
 
-export default function Calendar({ isOpen, onClose, onDateSelect }: CalendarProps) {
-  const [currentDate, setCurrentDate] = useState<Date>(new Date());
-
-  if (!isOpen) {
-    return null;
-  }
+export default function Calendar({ currentDate, setCurrentDate, onDateSelect }: CalendarProps) {
+  const navigate = useNavigate();
 
   const getDaysInMonth = (date: Date): (number | null)[] => {
     const year = date.getFullYear();
@@ -22,11 +18,9 @@ export default function Calendar({ isOpen, onClose, onDateSelect }: CalendarProp
     const firstDayIndex = new Date(year, month, 1).getDay();
 
     const days: (number | null)[] = [];
-    // Add empty cells for days before the first day of the month
     for (let i = 0; i < firstDayIndex; i++) {
       days.push(null);
     }
-    // Add all the days of the current month
     for (let i = 1; i <= daysInMonth; i++) {
       days.push(i);
     }
@@ -48,10 +42,14 @@ export default function Calendar({ isOpen, onClose, onDateSelect }: CalendarProp
     }
   };
 
+  const handleClose = (): void => {
+    navigate('/app');
+  };
+
   const days = getDaysInMonth(currentDate);
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={handleClose}>
       <div className="calendar-modal" onClick={(e) => e.stopPropagation()}>
         <div className="calendar-header">
           <button onClick={handlePrevMonth}>&lt;</button>
@@ -78,7 +76,7 @@ export default function Calendar({ isOpen, onClose, onDateSelect }: CalendarProp
             </div>
           ))}
         </div>
-        <button className="close-button" onClick={onClose}>
+        <button className="close-button" onClick={handleClose}>
           Close
         </button>
       </div>

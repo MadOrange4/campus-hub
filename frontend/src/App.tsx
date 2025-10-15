@@ -20,12 +20,12 @@ function RequireAuth({ children }: { children: JSX.Element }) {
 }
 
 export default function App() {
-  const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(true);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const openCalendar = (): void => setIsCalendarOpen(true);
   const closeCalendar = (): void => setIsCalendarOpen(false);
-
   const handleDateSelection = (date: Date): void => {
     setSelectedDate(date);
     closeCalendar();
@@ -43,10 +43,11 @@ export default function App() {
       <Route path="/events/new" element={<NewEvent />} />
       <Route path="/u/:uid" element={<UserProfilePage />} />
       <Route path="/calender" element={<Calendar
-          isOpen={isCalendarOpen}
-          onClose={closeCalendar}
-          onDateSelect={handleDateSelection}
-        />} />
+            currentDate={currentDate}
+            setCurrentDate={setCurrentDate}
+            onDateSelect={handleDateSelection}
+          />
+        } />
     </Routes>
   );
 }
