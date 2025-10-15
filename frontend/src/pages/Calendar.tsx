@@ -1,6 +1,6 @@
 // src/pages/Calendar.tsx
 import { useNavigate } from 'react-router-dom';
-import "../calender.css";
+import "../calendar.css";
 
 interface CalendarProps {
   currentDate: Date;

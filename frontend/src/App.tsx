@@ -10,7 +10,7 @@ import RequireVerified from "./components/RequireVerified";
 import Verify from "./pages/Verify";
 import NewEvent from "./pages/NewEvent";
 import UserProfilePage from "./pages/UserProfile";
-import Calendar from "./pages/Calender";
+import Calendar from "./pages/Calendar";
 import { useState, type JSX } from "react";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -42,7 +42,7 @@ export default function App() {
       <Route path="/verify" element={<Verify />} />
       <Route path="/events/new" element={<NewEvent />} />
       <Route path="/u/:uid" element={<UserProfilePage />} />
-      <Route path="/calender" element={<Calendar
+      <Route path="/calendar" element={<Calendar
             currentDate={currentDate}
             setCurrentDate={setCurrentDate}
             onDateSelect={handleDateSelection}
