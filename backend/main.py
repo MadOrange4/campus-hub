@@ -162,6 +162,34 @@ def update_me(payload: dict = Body(...), decoded: dict = Depends(verify_token)):
     ref.set(update_data, merge=True)
     return _doc_to_profile(ref.get())
 
+@app.delete("/users/me")
+def delete_me(decoded: dict = Depends(verify_token)):
+    """Deletes the authenticated user's account and all associated data."""
+    uid = decoded["uid"]
+
+    try:
+        user_ref = db.collection("users").document(uid)
+
+        # delete subcollections (friends, friendRequests, posts)
+        subcollections = ["friends", "friendRequests", "posts"]
+        for sub in subcollections:
+            sub_ref = user_ref.collection(sub)
+            for doc in sub_ref.stream():
+                doc.reference.delete()
+
+        # delete Firestore user document
+        user_ref.delete()
+
+        # delete from Firebase Authentication
+        fb_auth.delete_user(uid)
+
+        return {"ok": True, "message": "Account deleted successfully."}
+
+    except fb_auth.UserNotFoundError:
+        raise HTTPException(status_code=404, detail="User not found.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete account: {str(e)}")
+
 # --- Friends system API ---
 
 friends = APIRouter(prefix="/friends", tags=["friends"])
@@ -414,3 +442,4 @@ def status(other_uid: str, decoded: dict = Depends(verify_token)):
 
 # Mount router
 app.include_router(friends)
+

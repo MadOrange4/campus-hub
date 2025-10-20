@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "../lib/firebase";
-import { onAuthStateChanged, signOut, } from "firebase/auth";
+import { onAuthStateChanged, signOut, getAuth} from "firebase/auth";
 import {
   ArrowLeft,
   LogOut,
@@ -63,6 +63,14 @@ export default function Profile() {
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  
+  function openDeleteModal() {
+    setShowDeleteModal(true);
+  }
+  function closeDeleteModal() {
+    setShowDeleteModal(false);
+  }
 
   // Editable fields
   const [displayName, setDisplayName] = useState("");
@@ -165,6 +173,28 @@ export default function Profile() {
     await signOut(auth);
   }
 
+  async function handleDeleteAccount() {
+  const auth = getAuth();
+  const idToken = await auth.currentUser.getIdToken();
+
+  const res = await fetch("/api/users/me", {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+    },
+  });
+
+  const data = await res.json();
+
+  if (res.ok) {
+    alert("Your account has been deleted.");
+    await auth.signOut();
+    window.location.href = "/";
+  } else {
+    alert("Failed to delete account: " + data.detail);
+  }
+}
+
   async function saveProfile() {
     if (!fbUser) return;
     try {
@@ -234,7 +264,7 @@ export default function Profile() {
           >
             <LogOut className="size-4" />
             Sign out
-          </button>
+          </button>    
         </div>
       </header>
 
@@ -401,47 +431,82 @@ export default function Profile() {
           </section>
 
           {/* Preferences */}
-          <section className="bg-surface border border-border rounded-2xl shadow-soft p-6">
-            <h2 className="text-lg font-semibold">Preferences</h2>
-            <ul className="mt-3 space-y-3">
-              <li className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Bell className="size-4 text-text-muted" />
-                  <div>
-                    <p className="font-medium">Event reminders</p>
-                    <p className="text-sm text-text-muted">Receive reminders before events you RSVP to.</p>
-                  </div>
-                </div>
-                <label className="inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="peer sr-only"
-                    checked={eventReminders}
-                    onChange={() => setEventReminders((v) => !v)}
-                  />
-                  <span className="w-11 h-6 bg-muted rounded-full relative transition
-                                   after:content-[''] after:absolute after:top-0.5 after:left-0.5
-                                   after:w-5 after:h-5 after:bg-surface after:rounded-full after:transition
-                                   peer-checked:bg-brand peer-checked:after:translate-x-5"></span>
-                </label>
-              </li>
+        <section className="bg-surface border border-border rounded-2xl shadow-soft p-6 flex flex-col">
+         <h2 className="text-lg font-semibold">Preferences</h2>
+          <ul className="mt-3 space-y-3 flex-1">
+           <li className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+               <Bell className="size-4 text-text-muted" />
+                <div>
+                  <p className="font-medium">Event reminders</p>
+                  <p className="text-sm text-text-muted">Receive reminders before events you RSVP to.</p>
+               </div>
+             </div>
+             <label className="inline-flex items-center cursor-pointer">
+               <input
+                  type="checkbox"
+                  className="peer sr-only"
+                 checked={eventReminders}
+                  onChange={() => setEventReminders((v) => !v)}
+               />
+                <span className="w-11 h-6 bg-muted rounded-full relative transition
+                                after:content-[''] after:absolute after:top-0.5 after:left-0.5
+                                 after:w-5 after:h-5 after:bg-surface after:rounded-full after:transition
+                                 peer-checked:bg-brand peer-checked:after:translate-x-5"></span>
+              </label>
+           </li>
 
-              <li className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  {dark ? <Moon className="size-4 text-text-muted" /> : <Sun className="size-4 text-text-muted" />}
-                  <div>
-                    <p className="font-medium">Appearance</p>
-                    <p className="text-sm text-text-muted">Toggle light / dark theme.</p>
-                  </div>
+            <li className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                {dark ? <Moon className="size-4 text-text-muted" /> : <Sun className="size-4 text-text-muted" />}
+                <div>
+                 <p className="font-medium">Appearance</p>
+                 <p className="text-sm text-text-muted">Toggle light / dark theme.</p>
+              </div>
+             </div>
+              <button
+               onClick={toggleTheme}
+               className="px-3 py-2 rounded-xl border border-border bg-surface hover:bg-muted"
+             >
+                Switch to {dark ? "Light" : "Dark"}
+             </button>
+            </li>
+         </ul>
+
+           {/* Delete Account */}
+          <div className="flex justify-end mt-6">
+            <button
+             onClick={openDeleteModal}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-brand text-background hover:bg-brand-600"
+            >
+              Delete Account
+           </button>
+          </div>
+         {/* Delete Confirmation Modal */}
+          {showDeleteModal && (
+           <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+              <div className="bg-white rounded-xl shadow-xl p-6 w-96">
+               <h2 className="text-xl font-semibold text-red-600 mb-2">Confirm Account Deletion</h2>
+                <p className="text-gray-600 mb-6">
+                 Are you sure you want to permanently delete your account? This action cannot be undone.
+               </p>
+                <div className="flex justify-end space-x-3">
+                 <button
+                   onClick={closeDeleteModal}
+                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteAccount}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
+                  >
+                    Confirm Delete
+                  </button>
                 </div>
-                <button
-                  onClick={toggleTheme}
-                  className="px-3 py-2 rounded-xl border border-border bg-surface hover:bg-muted"
-                >
-                  Switch to {dark ? "Light" : "Dark"}
-                </button>
-              </li>
-            </ul>
+              </div>
+            </div>
+            )}
           </section>
         </div>
       </main>
