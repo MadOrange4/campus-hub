@@ -14,7 +14,7 @@ import {
 import type { User } from "firebase/auth"
 import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { isAllowedEmail } from "../lib/auth-domain";
-import { Eye, EyeOff, Mail, LogIn, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, Mail, LogIn, ArrowLeft, UserRoundPenIcon } from "lucide-react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -114,28 +114,49 @@ export default function Login() {
 
   async function doEmail(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return; // prevent double submit while pending
+
     setErr(null);
-    if (!isAllowedEmail(email)) {
+    const em = email.trim().toLowerCase();
+
+    // Start the spinner up front
+    setLoading(true);
+
+    // Early validation: if we bail here, also stop spinner
+    if (!isAllowedEmail(em)) {
       setErr("Please use your @umass.edu email.");
+      setLoading(false);
       return;
     }
+
     try {
-      setLoading(true);
-      const res = await signInWithEmailAndPassword(auth, email, pw);
+      const res = await signInWithEmailAndPassword(auth, em, pw);
 
       if (!res.user.emailVerified) {
         try { await sendEmailVerification(res.user); } catch {}
         setErr("Please verify your email. We’ve sent you a link.");
-        await auth.signOut();               // avoid half-auth state
-        return;
+        await auth.signOut();
+        return; // finally will still run, clearing loading
       }
 
       await upsertUserDoc(res.user);
       nav("/app");
     } catch (ex: any) {
-      setErr(ex?.code ?? ex?.message ?? "Sign-in failed");
+      const code = ex?.code ?? "";
+      if (
+        code === "auth/invalid-credential" ||
+        code === "auth/user-not-found" ||
+        code === "auth/wrong-password" ||
+        code === "auth/invalid-login-credentials"
+      ) {
+        setErr("Incorrect email or password.");
+      } else if (code === "auth/too-many-requests") {
+        setErr("Too many attempts. Try again later.");
+      } else {
+        setErr(ex?.message || "Sign-in failed.");
+      }
     } finally {
-      setLoading(false);
+      setLoading(false); // <-- guarantees the button text resets
     }
   }
 
@@ -207,7 +228,10 @@ export default function Login() {
               placeholder="you@umass.edu"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (err) setErr(null);
+              }}
               autoComplete="email"
               required
             />
@@ -228,7 +252,10 @@ export default function Login() {
               placeholder="••••••••"
               type={showPw ? "text" : "password"}
               value={pw}
-              onChange={(e) => setPw(e.target.value)}
+              onChange={(e) => {
+                setPw(e.target.value);
+                if (err) setErr(null);
+              }}
               autoComplete="current-password"
               required
             />
@@ -252,7 +279,7 @@ export default function Login() {
             onClick={() => nav("/register")}
             className="mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-border bg-surface hover:bg-muted"
           >
-            <LogIn className="size-4" />
+            <UserRoundPenIcon className="size-4" />
             Create an account
           </button>
 
