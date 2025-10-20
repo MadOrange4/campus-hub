@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { auth } from "../lib/firebase";
 import {
@@ -7,8 +7,62 @@ import {
   updateProfile,
 } from "firebase/auth";
 import { isAllowedEmail } from "../lib/auth-domain";
-import { LogIn, Mail, Eye, EyeOff, UserPlus } from "lucide-react";
+import { Mail, Eye, EyeOff, UserPlus } from "lucide-react";
 import { isStrongPassword } from "../lib/password-strength.ts";
+
+type StrengthInfo = {
+  score: 0 | 1 | 2 | 3 | 4;   // 0=very weak … 4=strong
+  percent: number;            // 0–100 for the bar
+  label: string;              // text label
+};
+
+// fast, lightweight strength estimator for the UI (no banned-list check here)
+// we still do the real checks in onSubmit with isStrongPassword()
+function measureStrength(pw: string): StrengthInfo {
+  if (!pw) return { score: 0, percent: 0, label: "Very weak" };
+
+  const len = pw.length;
+  const hasLower = /[a-z]/.test(pw);
+  const hasUpper = /[A-Z]/.test(pw);
+  const hasDigit = /\d/.test(pw);
+  const hasSymbol = /[\W_]/.test(pw);
+  const classes = [hasLower, hasUpper, hasDigit, hasSymbol].filter(Boolean).length;
+
+  // Penalize obvious repetition (e.g., 'aaaaaa', 'abcabcabc')
+  const repeatedSeq =
+    /(.)\1{2,}/.test(pw) || /(..)\1{2,}/.test(pw) || /(...)\1{2,}/.test(pw);
+
+  // Base points: length
+  let pts = 0;
+  if (len >= 16) pts += 3;
+  else if (len >= 12) pts += 2.5;
+  else if (len >= 10) pts += 2;
+  else if (len >= 8) pts += 1.5;
+  else if (len >= 6) pts += 1;
+
+  // Variety points
+  pts += (classes - 1) * 0.75; // 0, .75, 1.5, 2.25
+
+  // Light penalty for repetition
+  if (repeatedSeq) pts -= 0.75;
+
+  // Clamp 0–4 and map to score
+  const clamped = Math.max(0, Math.min(4, pts / 1.5)); // normalize roughly into 0–4
+  const rawScore = Math.round(clamped as number) as 0 | 1 | 2 | 3 | 4;
+
+  const scoreToLabel = ["Very weak", "Weak", "Fair", "Good", "Strong"] as const;
+  const percent = Math.min(100, Math.max(0, Math.floor((rawScore / 4) * 100)));
+
+  return { score: rawScore, percent, label: scoreToLabel[rawScore] };
+}
+
+function strengthColor(score: number) {
+  // Tailwind-ish colors: danger → warning → brand/green
+  if (score <= 1) return "bg-red-500";
+  if (score === 2) return "bg-yellow-500";
+  if (score === 3) return "bg-amber-500";
+  return "bg-emerald-600";
+}
 
 export default function Register() {
   const nav = useNavigate();
@@ -20,28 +74,33 @@ export default function Register() {
   const [err, setErr] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
 
+  const strength = useMemo(() => measureStrength(pw), [pw]);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
+
     if (!isAllowedEmail(email)) {
       setErr("Please use your @umass.edu email.");
       return;
     }
-    //we look at the password here
-    const obj = isStrongPassword(pw);
-    let str = "Your Password is too weak:\n";
-    [0, 1, 2, 3].forEach((i) => {
-      str += obj.issues[i];
-    });
-    if (!obj.strong) {
-      setErr(str);
+
+    // Real password policy check (banned list, etc.)
+    const res = isStrongPassword(pw);
+    if (!res.strong) {
+      const msg =
+        "Your Password is too weak:\n- " +
+        res.issues.filter(Boolean).join("\n- ");
+      setErr(msg);
       return;
     }
+
     try {
       setLoading(true);
       const cred = await createUserWithEmailAndPassword(auth, email, pw);
-      if (name.trim())
+      if (name.trim()) {
         await updateProfile(cred.user, { displayName: name.trim() });
+      }
       await sendEmailVerification(cred.user);
       setSent(true);
     } catch (ex: any) {
@@ -76,10 +135,14 @@ export default function Register() {
 
         <form
           onSubmit={onSubmit}
+          noValidate
           className="bg-surface border border-border rounded-2xl shadow-soft p-6"
         >
           {err && (
-            <div className="mb-4 rounded-xl border border-danger/40 bg-danger/10 text-danger px-3 py-2 text-sm">
+            <div
+              className="mb-4 rounded-xl border border-danger/40 bg-danger/10 text-danger px-3 py-2 text-sm"
+              style={{ whiteSpace: "pre-line" }}
+            >
               {err}
             </div>
           )}
@@ -139,7 +202,25 @@ export default function Register() {
                 </button>
               </div>
 
+              {/* Password strength meter */}
+              <div className="mt-2">
+                <div className="flex items-center justify-between text-xs text-text-muted mb-1">
+                  <span>Password strength</span>
+                  <span>{strength.label}</span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-muted/60 overflow-hidden">
+                  <div
+                    className={`h-2 ${strengthColor(strength.score)}`}
+                    style={{ width: `${strength.percent}%`, transition: "width 180ms ease" }}
+                  />
+                </div>
+                <div className="mt-1 text-[11px] text-text-muted">
+                  Tip: longer passphrases with mixed character types are stronger.
+                </div>
+              </div>
+
               <button
+                type="submit"
                 disabled={loading}
                 className="mt-5 w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-brand text-background hover:bg-brand-600 disabled:opacity-70"
               >

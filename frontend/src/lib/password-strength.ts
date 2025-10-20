@@ -91,22 +91,35 @@ function passwordEntropy(password: string): boolean {
 }
 //returns the length of the longest common substring between s1 and s2
 function lcss(s1: string, s2: string): number {
-  const DP: number[][] = new Array<number[]>(s1.length);
+  const n = s1.length, m = s2.length;
+  if (n === 0 || m === 0) return 0;
+
+  const DP: number[][] = Array.from({ length: n }, () => new Array<number>(m).fill(0));
   let ans = 0;
-  for (let i = 0; i < DP.length; i++) {
-    DP[i] = new Array<number>(s2.length);
-    DP[i][0] = s1.charAt(0) === s2.charAt(i) ? 1 : 0;
+
+  // init [0][0]
+  DP[0][0] = s1[0] === s2[0] ? 1 : 0;
+  ans = DP[0][0];
+
+  // first column
+  for (let i = 1; i < n; i++) {
+    DP[i][0] = (s1[i] === s2[0]) ? 1 : 0;
+    if (DP[i][0] > ans) ans = DP[i][0];
+  }
+  // first row
+  for (let j = 1; j < m; j++) {
+    DP[0][j] = (s1[0] === s2[j]) ? 1 : 0;
+    if (DP[0][j] > ans) ans = DP[0][j];
   }
 
-  for (let i = 1; i < s2.length; i++) {
-    DP[0][i] = s1.charAt(1) === s2.charAt(0) ? 1 : 0;
-  }
-  for (let i = 1; i < s1.length; i++) {
-    for (let j = 1; j < s2.length; j++) {
-      if (s1.charAt(i) === s2.charAt(j)) {
-        ans = Math.max(ans, (DP[i][j] = 1 + DP[i - 1][j - 1]));
+  // fill the rest
+  for (let i = 1; i < n; i++) {
+    for (let j = 1; j < m; j++) {
+      if (s1[i] === s2[j]) {
+        DP[i][j] = DP[i - 1][j - 1] + 1;
+        if (DP[i][j] > ans) ans = DP[i][j];
       } else {
-        DP[i][j] = 0;
+        DP[i][j] = 0; // substring must be contiguous
       }
     }
   }
@@ -162,28 +175,27 @@ export function isStrongPassword(password: string): {
   strong: boolean;
   issues: string[];
 } {
-  const one: boolean = password.length > 15;
-  const two: boolean =
-    password.match(/[A-Z]/) != null &&
-    password.match(/[a-z]/) != null &&
-    password.match(/\W/) != null &&
-    password.match(/\d/) != null;
-  //uppercase, lowercase, special character, number respectively.
-  const three: boolean = passwordEntropy(password);
-  const badPasswords = getBannedPasswords();
-  const four: boolean = !badPasswords.some((badPass): boolean => {
-    return lcss(password, badPass) > 4;
-  });
-  const issues: string[] = Array(4);
-  issues[0] = !one ? "Your password is too short.\n" : "";
-  issues[1] = !two
-    ? "Your password is constructed from an alphabet which lacks at least one of uppercase, lowercase, number or special characters (underscore is not a special character).\n"
-    : "";
-  issues[2] = !three ? "Your password has low entropy.\n" : "";
-  issues[3] = !four
-    ? "Your password is too similar to a common password, or you used keys too close to each other on the keyboard"
-    : "";
+  const issues: string[] = [];
 
-  const strong: boolean = one && two && three && four;
+  // 1) length
+  const longEnough = password.length >= 8;  // was >15
+  if (!longEnough) issues.push("Use at least 8 characters.");
+
+  // 2) optional light diversity (3 of 4), not required
+  const classes = [
+    /[A-Z]/.test(password),
+    /[a-z]/.test(password),
+    /\d/.test(password),
+    /[\W_]/.test(password),
+  ].filter(Boolean).length;
+  const diverseEnough = classes >= 3;
+  if (!diverseEnough) issues.push("Include 3 of: upper, lower, number, symbol.");
+
+  // 3) banned / breached similarity (relax threshold)
+  const badPasswords = getBannedPasswords();
+  const tooSimilar = badPasswords.some(bp => lcss(password, bp) >= 7); // was >4
+  if (tooSimilar) issues.push("Too similar to a common password.");
+
+  const strong = longEnough && !tooSimilar; // diversity just a nudge
   return { strong, issues };
 }
