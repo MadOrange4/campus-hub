@@ -367,6 +367,14 @@ export default function AppPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => nav("/calendar")}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-surface hover:bg-muted"
+              title="Calendar"
+            >
+              <CalendarDays className="size-4" />
+              <span className="hidden sm:inline">Calendar</span>
+            </button>
+            <button
               onClick={() => nav("/profile")}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-surface hover:bg-muted"
               title="Profile"
