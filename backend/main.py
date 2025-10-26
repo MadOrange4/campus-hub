@@ -1,10 +1,16 @@
 import os
+from dotenv import load_dotenv
 from typing import Optional, Literal, List, Dict, Any
 
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Body, Path
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRouter
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
+from datetime import datetime, timezone
+from contextlib import asynccontextmanager
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 
 from google.cloud.firestore_v1 import Increment
 import firebase_admin
@@ -12,6 +18,9 @@ from firebase_admin import auth as fb_auth, credentials, firestore
 
 # Alias for clarity in transactional sections
 afs = firestore
+
+# Load environment variables from .env file
+load_dotenv()
 
 ALLOWED_ORIGIN = "http://localhost:5173"
 ALLOWED_DOMAIN = "umass.edu"
@@ -26,7 +35,74 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
-app = FastAPI()
+# --- deleting expired events ---
+
+def delete_expired_events():
+    """
+    Background task to find and delete expired events from Firestore.
+    """
+    print("Running background task to delete expired events...")
+    # Define the collection where your events are stored
+    events_ref = db.collection('events')
+
+    # Use a standard datetime object for the query comparison
+    now_utc = datetime.now(timezone.utc)
+
+    # Query for events where 'endDate' is less than the current time
+    try:
+        expired_events_query = events_ref.where('end', '<', now_utc)
+        snapshots = expired_events_query.stream() # This returns a sync generator
+
+        # A batch allows you to delete multiple documents in a single request.
+        batch = db.batch()
+        count = 0
+
+        # Loop over the synchronous generator
+        for doc_snapshot in snapshots:
+            batch.delete(doc_snapshot.reference)
+            count += 1
+            if count % 500 == 0:
+                batch.commit() # Commit synchronously
+                batch = db.batch()
+
+        if count > 0:
+            batch.commit() # Commit the final batch
+            print(f"Deleted {count} expired events.")
+        else:
+            print("No expired events found.")
+
+    except Exception as e:
+        print(f"Error during expired event cleanup: {e}")
+
+
+# Initialize the scheduler globally to be accessed in the lifespan context manager
+scheduler = AsyncIOScheduler()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Application startup...")
+
+    # Your existing startup logic
+    if not firebase_admin._apps:
+        cred_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+        if not cred_path:
+            raise RuntimeError("GOOGLE_APPLICATION_CREDENTIALS env var is not set")
+        cred = credentials.Certificate(cred_path)
+        firebase_admin.initialize_app(cred)
+    
+    # 1. Run initial cleanup immediately in a threadpool
+    await run_in_threadpool(delete_expired_events)
+
+    # 2. Start the periodic scheduler, which will also use run_in_threadpool
+    scheduler.add_job(lambda: asyncio.create_task(run_in_threadpool(delete_expired_events)), IntervalTrigger(hours=24))
+    scheduler.start()
+    
+    yield
+
+    # 3. Shut down the scheduler gracefully
+    scheduler.shutdown()
+
+app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[ALLOWED_ORIGIN],
@@ -442,4 +518,6 @@ def status(other_uid: str, decoded: dict = Depends(verify_token)):
 
 # Mount router
 app.include_router(friends)
+
+
 
