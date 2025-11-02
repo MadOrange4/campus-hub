@@ -12,12 +12,27 @@ from contextlib import asynccontextmanager
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
+import asyncio
+from firebase_admin.auth import ActionCodeSettings 
 from google.cloud.firestore_v1 import Increment
+from google.cloud.firestore_v1.base_query import FieldFilter
 import firebase_admin
 from firebase_admin import auth as fb_auth, credentials, firestore
 
 # Alias for clarity in transactional sections
 afs = firestore
+
+auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+class PasswordResetRequest(BaseModel):
+    email: str = Field(..., example="user@umass.edu", description="The user's registered email address")
+
+class PasswordChangeRequest(BaseModel):
+    oobCode: str = Field(..., description="The out-of-band code received in the reset link")
+    newPassword: str = Field(..., min_length=6, description="The new password")
+
+class EmailVerificationRequest(BaseModel):
+    email: str = Field(..., example="user@umass.edu", description="The user's email address to verify")
 
 # Load environment variables from .env file
 load_dotenv()
@@ -35,6 +50,68 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
+# --- password reset --- 
+@auth_router.post("/forgot-password", summary="Request a password reset email")
+async def forgot_password(request: PasswordResetRequest):
+    """
+    Sends a password reset email to the provided email address using Firebase Auth.
+    """
+    
+    action_code_settings = ActionCodeSettings(
+        url="http://localhost:5173/reset-password",
+        handle_code_in_app=False # Use snake_case here for Python SDK class
+    )
+
+    try:
+        # Pass the ActionCodeSettings object correctly
+        await run_in_threadpool(
+            fb_auth.generate_password_reset_link,
+            email=request.email,
+            action_code_settings=action_code_settings
+        )
+        return {"message": "If the email is registered, a password reset link has been sent."}
+
+    except fb_auth.UserNotFoundError:
+        # For security, return a generic success message even if the user isn't found
+        return {"message": "If the email is registered, a password reset link has been sent."}
+    except Exception as e:
+        # Catch other potential errors (e.g., invalid email format, network issues)
+        print(f"Error generating password reset link: {e}")
+        
+        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while trying to send the reset email."
+        )
+
+@auth_router.post("/reset-password", summary="Reset the password using the OOB code")
+async def reset_password(request: PasswordChangeRequest):
+    """
+    Finalizes the password reset using the out-of-band code from the email link
+    and the new password.
+    """
+    try:
+        # Firebase handles verifying the code and updating the password
+        # This function runs synchronously and must be awaited using run_in_threadpool
+        await run_in_threadpool(
+            fb_auth.verify_password_reset_code_and_set_password,
+            oob_code=request.oobCode,
+            new_password=request.newPassword
+        )
+        return {"message": "Your password has been successfully reset."}
+
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid oobCode or new password format."
+        )
+    except Exception as e:
+        print(f"Error resetting password: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The link is invalid or expired. Please request a new one."
+        )
+
 # --- deleting expired events ---
 
 def delete_expired_events():
@@ -50,7 +127,7 @@ def delete_expired_events():
 
     # Query for events where 'endDate' is less than the current time
     try:
-        expired_events_query = events_ref.where('end', '<', now_utc)
+        expired_events_query = events_ref.where(filter=FieldFilter('end', '<', now_utc))
         snapshots = expired_events_query.stream() # This returns a sync generator
 
         # A batch allows you to delete multiple documents in a single request.
@@ -103,6 +180,7 @@ async def lifespan(app: FastAPI):
     scheduler.shutdown()
 
 app = FastAPI(lifespan=lifespan)
+app.include_router(auth_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[ALLOWED_ORIGIN],
@@ -135,6 +213,20 @@ def verify_token(req: Request):
 Role = Literal["student","staff","admin","professor","ta","club_officer"]
 Year = Literal["freshman","sophomore","junior","senior","grad","alumni","staff","faculty","other"]
 Visibility = Literal["public","campus","private"]
+
+class LocationCoords(BaseModel):
+    lat: float
+    lng: float
+
+class NewEventPayload(BaseModel):
+    title: str
+    desc: str
+    locationName: str
+    location: LocationCoords
+    start: str # We'll parse this ISO string in the endpoint
+    end: Optional[str] = None # We'll parse this ISO string in the endpoint
+    tags: List[str]
+    bannerUrl: Optional[str] = None # Changed from HttpUrl for simplicity, FastAPI validates types anyway
 
 class UserProfile(BaseModel):
     uid: str
@@ -194,6 +286,50 @@ def _doc_to_profile(doc) -> UserProfile:
     return UserProfile(**data)
 
 # --- Core user routes ---
+
+# Endpoint to create a new event
+@app.post("/events", status_code=status.HTTP_201_CREATED)
+async def create_event(event_data: NewEventPayload, decoded_token: dict = Depends(verify_token)):
+    # The 'decoded_token' contains the user's information (including UID) from the verified token
+    uid = decoded_token['uid']
+    
+    # Optional: You could check user roles here if needed (e.g., ensure the user is an 'organizer')
+    # user_doc = db.collection("users").document(uid).get()
+    # if not user_doc.exists or 'organizer' not in user_doc.get('roles', []):
+    #    raise HTTPException(status_code=403, detail="User is not authorized to create events")
+
+    # Convert incoming data types for Firestore
+    try:
+        start_time = datetime.fromisoformat(event_data.start)
+        end_time = datetime.fromisoformat(event_data.end) if event_data.end else None
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid date/time format: {e}")
+
+    if end_time and end_time <= start_time:
+        raise HTTPException(status_code=400, detail="End time must be after start time.")
+
+    doc_data: Dict[str, any] = {
+        "title": event_data.title,
+        "desc": event_data.desc,
+        "locationName": event_data.locationName,
+        "location": GeoPoint(event_data.location.lat, event_data.location.lng),
+        "start": start_time,
+        "end": end_time,
+        "tags": event_data.tags,
+        "bannerUrl": event_data.bannerUrl,
+        "createdBy": uid,
+        "createdAt": server_timestamp(),
+        "updatedAt": server_timestamp(),
+        "status": "pending_review", # Added a status for moderation
+    }
+
+    try:
+        # Add document to the 'events' collection
+        doc_ref = await run_in_threadpool(db.collection("events").add, doc_data)
+        return {"id": doc_ref[1].id, "message": "Event created successfully"}
+    except Exception as e:
+        # In a real app, log the detailed exception
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @app.get("/me")
 def me(decoded: dict = Depends(verify_token)):

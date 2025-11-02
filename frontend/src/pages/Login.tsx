@@ -9,12 +9,15 @@ import {
   linkWithPopup,
   linkWithCredential,
   EmailAuthProvider,
-  sendEmailVerification
+  sendEmailVerification,
+  sendPasswordResetEmail
 } from "firebase/auth";
 import type { User } from "firebase/auth"
 import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { isAllowedEmail } from "../lib/auth-domain";
 import { Eye, EyeOff, Mail, LogIn, ArrowLeft, UserRoundPenIcon } from "lucide-react";
+
+const API_PREFIX = "/api"; 
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -22,6 +25,8 @@ export default function Login() {
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
+  // Add state to track if we're in the forgot password mode
+  const [isForgotPasswordMode, setIsForgotPasswordMode] = useState(false); 
   const nav = useNavigate();
 
   // Firestore upsert
@@ -109,6 +114,47 @@ export default function Login() {
     // Other cases: just try linking with popup
     if (pendingCred?.providerId === "google.com") {
       await linkWithPopup(user, new GoogleAuthProvider());
+    }
+  }
+
+  // Make sure you import the fetch function or have it globally available
+  // import { fetch } from 'your-fetch-library'; // or just use window.fetch
+
+  async function handleForgotPassword() {
+    setErr(null);
+    const em = email.trim().toLowerCase();
+
+    if (!isAllowedEmail(em)) {
+      setErr("Please enter your @umass.edu email first.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // --- UPDATED: Call your FastAPI backend endpoint ---
+      const response = await fetch(`${API_PREFIX}/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: em }),
+      });
+
+      if (!response.ok) {
+        // Handle potential errors from your backend API
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to send reset link.");
+      }
+      
+      // Display a generic success message to prevent email enumeration
+      setErr(`If the email is registered, a link has been sent.`);
+      // Optional: switch back to login mode if you are using isForgotPasswordMode state
+      // setIsForgotPasswordMode(false); 
+
+    } catch (error: any) { 
+        console.error(error);
+        // Display a user-friendly generic error message
+        setErr("Failed to send password reset email. Please try again later.");
+    } finally { 
+        setLoading(false); 
     }
   }
 
@@ -270,6 +316,18 @@ export default function Login() {
               ) : (
                 <Eye className="size-4 text-text-muted" />
               )}
+            </button>
+          </div>
+
+          {/* Forgot Password Link */}
+          <div className="mt-3 text-right">
+            <button
+              type="button" // Use type="button" to prevent form submission
+              onClick={handleForgotPassword}
+              className="text-sm text-brand hover:text-brand-dark transition-colors font-medium"
+              disabled={loading}
+            >
+              Forgot your password?
             </button>
           </div>
 
