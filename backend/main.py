@@ -273,50 +273,6 @@ def _doc_to_profile(doc) -> UserProfile:
 
 # --- Core user routes ---
 
-# Endpoint to create a new event
-@app.post("/events", status_code=status.HTTP_201_CREATED)
-async def create_event(event_data: NewEventPayload, decoded_token: dict = Depends(verify_token)):
-    # The 'decoded_token' contains the user's information (including UID) from the verified token
-    uid = decoded_token['uid']
-    
-    # Optional: You could check user roles here if needed (e.g., ensure the user is an 'organizer')
-    # user_doc = db.collection("users").document(uid).get()
-    # if not user_doc.exists or 'organizer' not in user_doc.get('roles', []):
-    #    raise HTTPException(status_code=403, detail="User is not authorized to create events")
-
-    # Convert incoming data types for Firestore
-    try:
-        start_time = datetime.fromisoformat(event_data.start)
-        end_time = datetime.fromisoformat(event_data.end) if event_data.end else None
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid date/time format: {e}")
-
-    if end_time and end_time <= start_time:
-        raise HTTPException(status_code=400, detail="End time must be after start time.")
-
-    doc_data: Dict[str, any] = {
-        "title": event_data.title,
-        "desc": event_data.desc,
-        "locationName": event_data.locationName,
-        "location": GeoPoint(event_data.location.lat, event_data.location.lng),
-        "start": start_time,
-        "end": end_time,
-        "tags": event_data.tags,
-        "bannerUrl": event_data.bannerUrl,
-        "createdBy": uid,
-        "createdAt": server_timestamp(),
-        "updatedAt": server_timestamp(),
-        "status": "pending_review", # Added a status for moderation
-    }
-
-    try:
-        # Add document to the 'events' collection
-        doc_ref = await run_in_threadpool(db.collection("events").add, doc_data)
-        return {"id": doc_ref[1].id, "message": "Event created successfully"}
-    except Exception as e:
-        # In a real app, log the detailed exception
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
 @app.get("/me")
 def me(decoded: dict = Depends(verify_token)):
     return {
