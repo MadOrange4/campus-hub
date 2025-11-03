@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, CheckCircle } from "lucide-react";
+import { isStrongPassword } from "../lib/password-strength.ts";
 
 const API_PREFIX = "/api"; 
 
@@ -31,6 +32,17 @@ export default function ResetPasswordPage() {
     setSuccess(null);
     setLoading(true);
 
+    /*
+    const res = isStrongPassword(pw);
+    if (!res.strong) {
+      const msg =
+        "Your Password is too weak:\n- " +
+        res.issues.filter(Boolean).join("\n- ");
+      setErr(msg);
+      return;
+    }
+    */
+
     if (newPassword.length < 6) {
       setError("Password must be at least 6 characters long.");
       setLoading(false);
@@ -60,7 +72,7 @@ export default function ResetPasswordPage() {
       setSuccess(data.message || "Your password has been successfully reset!");
       setNewPassword("");
       // Optional: redirect to login page after a few seconds
-      setTimeout(() => nav("/login"), 3000);
+      setTimeout(() => nav("/login"), 1200);
 
     } catch (err: any) {
       // This is where you might catch the specific 'auth/invalid-action-code' error
