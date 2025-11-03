@@ -214,20 +214,6 @@ Role = Literal["student","staff","admin","professor","ta","club_officer"]
 Year = Literal["freshman","sophomore","junior","senior","grad","alumni","staff","faculty","other"]
 Visibility = Literal["public","campus","private"]
 
-class LocationCoords(BaseModel):
-    lat: float
-    lng: float
-
-class NewEventPayload(BaseModel):
-    title: str
-    desc: str
-    locationName: str
-    location: LocationCoords
-    start: str # We'll parse this ISO string in the endpoint
-    end: Optional[str] = None # We'll parse this ISO string in the endpoint
-    tags: List[str]
-    bannerUrl: Optional[str] = None # Changed from HttpUrl for simplicity, FastAPI validates types anyway
-
 class UserProfile(BaseModel):
     uid: str
     email: str
