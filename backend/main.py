@@ -56,7 +56,7 @@ async def forgot_password(request: PasswordResetRequest):
     """
     Sends a password reset email to the provided email address using Firebase Auth.
     """
-    
+
     action_code_settings = ActionCodeSettings(
         url="http://localhost:5173/reset-password",
         handle_code_in_app=False # Use snake_case here for Python SDK class
