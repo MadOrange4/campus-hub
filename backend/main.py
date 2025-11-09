@@ -5,7 +5,7 @@ from typing import Optional, Literal, List, Dict, Any
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Body, Path
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRouter
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError, field_validator
 from starlette.concurrency import run_in_threadpool
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
@@ -152,14 +152,24 @@ class UserProfile(BaseModel):
     notificationPrefs: Dict[str, bool] = Field(
         default_factory=lambda: {"eventReminders": True, "emailUpdates": False, "push": True}
     )
+    eventPrefs: List[str] = Field(default_factory=list)
     domainOk: bool = True
     isStaffVerified: bool = False
     createdAt: Optional[Any] = None
     updatedAt: Optional[Any] = None
 
+    @field_validator('eventPrefs')
+    def check_valid_tags(cls, v: List[str]):
+        # Validate that all provided tags are in the master list
+        invalid_tags = [tag for tag in v if tag not in VALID_EVENT_TAGS]
+        if invalid_tags:
+            raise ValueError(f"Invalid tags found: {invalid_tags}. Allowed tags are: {VALID_EVENT_TAGS}")
+        return v
+
 # Fields users are allowed to update via PATCH
 ALLOWED_USER_FIELDS = {
-    "name","photoURL","year","major","bio","pronouns","phone","visibility","notificationPrefs"
+    "name","photoURL","year","major","bio","pronouns","phone","visibility","notificationPrefs",
+    "eventPrefs"
 }
 
 def _defaults_for_new_user(uid: str, email: str, name: Optional[str], photo: Optional[str]) -> dict:
@@ -265,6 +275,51 @@ def delete_me(decoded: dict = Depends(verify_token)):
         raise HTTPException(status_code=404, detail="User not found.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete account: {str(e)}")
+
+# --- New Router for User Preferences ---
+prefs_router = APIRouter()
+app.include_router(prefs_router, prefix="/api/v1/users", tags=["users"])
+
+@prefs_router.get("/event-tags", response_model=List[str], summary="Get all possible event tags")
+def get_valid_event_tags():
+    """Returns a list of all event tags available for user preference selection."""
+    return VALID_EVENT_TAGS
+
+
+@prefs_router.put("/event-prefs", response_model=UserProfile, summary="Update user event preferences")
+def update_event_preferences(
+    new_prefs: List[str] = Body(..., description="The user's new list of preferred event tags"),
+    decoded_token: dict = Depends(verify_token)
+):
+    """
+    Updates the user's list of preferred event tags. 
+    Requires a full list of all desired tags to replace the old list.
+    """
+    uid = decoded_token['uid']
+    user_ref = db.collection('users').document(uid)
+
+    # Validate the input list using the Pydantic validator logic
+    try:
+        # We can leverage the model's validator by trying to create a dummy object
+        UserProfile(uid=uid, email="dummy@umass.edu", eventPrefs=new_prefs) 
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    updates = {
+        "eventPrefs": new_prefs,
+        "updatedAt": afs.SERVER_TIMESTAMP
+    }
+
+    # Atomically update the document
+    user_ref.update(updates)
+    
+    # Optional: fetch the updated profile to return to the client
+    updated_doc = user_ref.get()
+    if not updated_doc.exists:
+        # Should not happen if user just logged in and exists
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User profile not found after update.")
+
+    return _doc_to_profile(updated_doc)
 
 # --- Friends system API ---
 
