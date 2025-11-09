@@ -7,6 +7,7 @@ class string_compressor:
     @param alphabet: a string with all characters in the alphabet, each character exactly once. Order determines
                      how the string will be split at each layer.
     """
+    #TODO theres sorta a bug in the base cases maybe we fix later
     def __init__(self, alphabet):
         self._alphabet = string_compressor._make_alphabet(alphabet)
         self.__compressed = [] #arr should be interpreted as for example:

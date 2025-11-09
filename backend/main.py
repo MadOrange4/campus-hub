@@ -25,6 +25,33 @@ load_dotenv()
 ALLOWED_ORIGIN = "http://localhost:5173"
 ALLOWED_DOMAIN = "umass.edu"
 
+EVENT_FIELDNAMES = []
+
+EVENT_IS_RECURRING_FIELDNAME = "recurs"
+EVENT_FIELDNAMES.append(EVENT_IS_RECURRING_FIELDNAME)
+EVENT_BANNER_URL_FIELDNAME = "bannerUrl"
+EVENT_FIELDNAMES.append(EVENT_BANNER_URL_FIELDNAME)
+EVENT_CREATED_AT_FIELDNAME = "createdAt"
+EVENT_FIELDNAMES.append(EVENT_CREATED_AT_FIELDNAME)
+EVENT_CREATED_BY_FIELDNAME = "createdBy"
+EVENT_FIELDNAMES.append(EVENT_CREATED_BY_FIELDNAME)
+EVENT_DESC_FIELDNAME = "desc"
+EVENT_FIELDNAMES.append(EVENT_DESC_FIELDNAME)
+EVENT_END_FIELDNAME = "end"
+EVENT_FIELDNAMES.append(EVENT_END_FIELDNAME)
+EVENT_LOCATION_FIELDNAME = "location"
+EVENT_FIELDNAMES.append(EVENT_LOCATION_FIELDNAME)
+EVENT_LOCATION_NAME_FIELDNAME = "locationName"
+EVENT_FIELDNAMES.append(EVENT_LOCATION_NAME_FIELDNAME)
+EVENT_START_FIELDNAME = "start"
+EVENT_FIELDNAMES.append(EVENT_START_FIELDNAME)
+EVENT_TAGS_FIELDNAME = "tags"
+EVENT_FIELDNAMES.append(EVENT_TAGS_FIELDNAME)
+EVENT_TITLE_FIELDNAME = "title"
+EVENT_FIELDNAMES.append(EVENT_TITLE_FIELDNAME)
+EVENT_UPDATED_AT_FIELDNAME = "updatedAt" 
+EVENT_FIELDNAMES.append(EVENT_UPDATED_AT_FIELDNAME)
+
 # --- Firebase Admin init ---
 if not firebase_admin._apps:
     cred_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
@@ -34,6 +61,84 @@ if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
+
+def getNextOccurance(recurs):
+    earliestDate = datetime(9999,1,1)
+    now = datetime.now(timezone.utc)
+    day = now.weekday()
+    month = now.month
+    year = now.year
+    i = 0
+    j = 0
+    k = 0
+    flag = False
+    dayInc = 0
+    for char in recurs:
+        match char:
+            case "M":
+                dayInc = -day
+                break
+            case "T":
+                dayInc = -day + 1
+                break
+            case "W":
+                dayInc = -day + 2
+                break
+            case "t":
+                dayInc = -day + 3
+                break
+            case "F":
+                dayInc = -day + 4
+                break
+            case "S":
+                dayInc = -day + 5
+                break
+            case "s":
+                dayInc = -day + 6
+                break
+            case _:
+                if i==0:
+                    j+=int(char)*10
+                    i+=1
+                else if i ==1: 
+                    j+=int(char)
+                    i+=1
+                else if i ==2:
+                    k+=10*int(char)
+                    i+=1
+                else:
+                    k+=int(char)
+                    flag = True
+                    i = 0
+                break
+        if flag:
+            if dayInc <= 0:
+                dayInc +=7
+            newDay = day + dayInc
+            occurrance = datetime(year,month,newDay,j,k)
+            j=0
+            k=0
+            flag = False
+            if occurrance < earliestDate:
+                earliestDate = occurrance
+    return earliestDate
+
+
+            
+#TODO after testing, we need to implement this function
+#TODO completely untested
+def recur_events():
+    time = firestore.SERVER_TIMESTAMP
+    try:
+        recurring_events = db.collection('events').where(EVENT_IS_RECURRING_FIELDNAME, "!=", "0").get()
+    except Exception as e:
+        print(f"Unexpected {e=}, {type(e)=}")
+        return
+    for event in recurring_events:
+        doc = event.data()
+        event.update({EVENT_END_FIELDNAME : getNextOccurance(doc[EVENT_IS_RECURRING_FIELDNAME])})
+        event.update({EVENT_UPDATED_AT_FIELDNAME:time})
+    
 
 # --- deleting expired events ---
 
