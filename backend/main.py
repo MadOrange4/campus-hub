@@ -100,10 +100,10 @@ def getNextOccurance(recurs):
                 if i==0:
                     j+=int(char)*10
                     i+=1
-                else if i ==1: 
+                elif i ==1: 
                     j+=int(char)
                     i+=1
-                else if i ==2:
+                elif i ==2:
                     k+=10*int(char)
                     i+=1
                 else:
@@ -240,6 +240,7 @@ def verify_token(req: Request):
 Role = Literal["student","staff","admin","professor","ta","club_officer"]
 Year = Literal["freshman","sophomore","junior","senior","grad","alumni","staff","faculty","other"]
 Visibility = Literal["public","campus","private"]
+Preference_Types = Literal["defaultPreference","preference1","preference2"]
 
 class UserProfile(BaseModel):
     uid: str
@@ -254,17 +255,16 @@ class UserProfile(BaseModel):
     pronouns: Optional[str] = None
     phone: Optional[str] = None
     visibility: Visibility = "campus"
-    notificationPrefs: Dict[str, bool] = Field(
-        default_factory=lambda: {"eventReminders": True, "emailUpdates": False, "push": True}
-    )
+    notificationPrefs: Dict[str, bool] = Field(default_factory=lambda: {"eventReminders": True, "emailUpdates": False, "push": True})
     domainOk: bool = True
     isStaffVerified: bool = False
     createdAt: Optional[Any] = None
     updatedAt: Optional[Any] = None
-
+    #TODO something may be wrong...
+    preferences: List[Preference_Types] = Field(default_factory=list)
 # Fields users are allowed to update via PATCH
 ALLOWED_USER_FIELDS = {
-    "name","photoURL","year","major","bio","pronouns","phone","visibility","notificationPrefs"
+    "name","photoURL","year","major","bio","pronouns","phone","visibility","notificationPrefs","preferences"
 }
 
 def _defaults_for_new_user(uid: str, email: str, name: Optional[str], photo: Optional[str]) -> dict:
@@ -280,6 +280,8 @@ def _defaults_for_new_user(uid: str, email: str, name: Optional[str], photo: Opt
         "bio": "",
         "pronouns": None,
         "phone": None,
+        #TODO something may be wrong...
+        "preferences": ["defaultPreference"],
         "visibility": "campus",
         "notificationPrefs": {"eventReminders": True, "emailUpdates": False, "push": True},
         "domainOk": email.endswith(f"@{ALLOWED_DOMAIN}"),
@@ -318,11 +320,13 @@ def get_or_create_me(decoded: dict = Depends(verify_token)):
     name = decoded.get("name")
     picture = decoded.get("picture")
 
+    
     ref = db.collection("users").document(uid)
-    snap = ref.get()
+    snap = ref.get()  
     if not snap.exists:
-        ref.set(_defaults_for_new_user(uid, email, name, picture))
-        snap = ref.get()
+        #some things are wrong so this is a temporary fix
+        
+        snap = ref.get(_defaults_for_new_user(uid, email, name, picture))
     return _doc_to_profile(snap)
 
 @app.patch("/users/me", response_model=UserProfile)
@@ -335,7 +339,6 @@ def update_me(payload: dict = Body(...), decoded: dict = Depends(verify_token)):
         name = decoded.get("name")
         picture = decoded.get("picture")
         ref.set(_defaults_for_new_user(uid, email, name, picture))
-
     update_data = {k: v for k, v in payload.items() if k in ALLOWED_USER_FIELDS}
     if not update_data:
         raise HTTPException(status_code=400, detail="No writable fields provided.")
