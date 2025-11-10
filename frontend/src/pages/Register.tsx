@@ -5,8 +5,7 @@ import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
   updateProfile,
-} from "firebase/auth";
-import type { ActionCodeSettings } from "firebase/auth";
+} from "../../node_modules/firebase/auth";
 import { isAllowedEmail } from "../lib/auth-domain";
 import { Mail, Eye, EyeOff, UserPlus } from "lucide-react";
 import { isStrongPassword } from "../lib/password-strength.ts";

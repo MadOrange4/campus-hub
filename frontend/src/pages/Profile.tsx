@@ -25,6 +25,7 @@ import {
 type Role = "student"|"staff"|"admin"|"professor"|"ta"|"club_officer";
 type Year = "freshman"|"sophomore"|"junior"|"senior";
 type Visibility = "public"|"campus"|"private";
+type Preference_Types = "defaultPreference"|"preference1"|"preference2"
 
 type UserProfile = {
   uid: string;
@@ -44,6 +45,7 @@ type UserProfile = {
   isStaffVerified: boolean;
   createdAt?: string;
   updatedAt?: string;
+  preferences: Preference_Types[];
 };
 
 /* ---------------- Constants ---------------- */
@@ -90,6 +92,7 @@ export default function Profile() {
   const [friendsCountLive, setFriendsCountLive] = useState<number>(0);
   const [pendingCountLive, setPendingCountLive] = useState<number>(0);
 
+  const [preferences, setPreferencces] = useState(false);
   const [dark, setDark] = useState<boolean>(() => document.documentElement.classList.contains("dark"));
 
   /* ------------ Auth guard + load profile ------------- */
@@ -222,6 +225,7 @@ export default function Profile() {
           ...(profile?.notificationPrefs ?? {}),
           eventReminders: eventReminders,
         },
+        preferences: preferences,
       };
       const r = await fetch("/api/users/me", {
         method: "PATCH",

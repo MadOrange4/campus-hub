@@ -15,6 +15,7 @@ import {
 type Role = "student"|"staff"|"admin"|"professor"|"ta"|"club_officer";
 type Visibility = "public"|"campus"|"private";
 type Year = "freshman"|"sophomore"|"junior"|"senior"|"grad"|"alumni"|"staff"|"faculty"|"other";
+type Preference_Types = "defaultPreference"|"preference1"|"preference2"
 
 type PublicUser = {
   uid: string;
@@ -30,6 +31,8 @@ type PublicUser = {
   isStaffVerified?: boolean;
   friendsCount?: number;
   pendingCount?: number;
+  //TODO something may be wrong...
+  preferences: Preference_Types[];
 };
 
 type EventMini = {
@@ -104,6 +107,7 @@ export default function UserProfilePage() {
           isStaffVerified: !!d.isStaffVerified,
           friendsCount: Number(d.friendsCount || 0),
           pendingCount: Number(d.pendingCount || 0),
+          preferences: d.preferences || [],
         });
       } catch (e: any) {
         setErr(e.message || "Failed to load profile");
