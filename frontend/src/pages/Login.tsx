@@ -37,7 +37,7 @@ export default function Login() {
     const isAdminClaim =
       idtr.claims.role === "admin" ||
       (Array.isArray(idtr.claims.roles) && idtr.claims.roles.includes("admin"));
-
+    //TODO we should reduce code duplication among login, profile, register, userprofile (and maybe more) here
     const base = {
       uid: u.uid,
       email: (u.email ?? "").toLowerCase(),
@@ -74,6 +74,7 @@ export default function Login() {
           // nice-to-have counters (optional)
           friendsCount: 0,
           pendingCount: 0,
+          preferences: [""]
         },
         { merge: true }
       );
