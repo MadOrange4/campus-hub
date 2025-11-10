@@ -12,12 +12,27 @@ from contextlib import asynccontextmanager
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
+import asyncio
+from firebase_admin.auth import ActionCodeSettings 
 from google.cloud.firestore_v1 import Increment
+from google.cloud.firestore_v1.base_query import FieldFilter
 import firebase_admin
 from firebase_admin import auth as fb_auth, credentials, firestore
 
 # Alias for clarity in transactional sections
 afs = firestore
+
+auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+class PasswordResetRequest(BaseModel):
+    email: str = Field(..., example="user@umass.edu", description="The user's registered email address")
+
+class PasswordChangeRequest(BaseModel):
+    oobCode: str = Field(..., description="The out-of-band code received in the reset link")
+    newPassword: str = Field(..., min_length=6, description="The new password")
+
+class EmailVerificationRequest(BaseModel):
+    email: str = Field(..., example="user@umass.edu", description="The user's email address to verify")
 
 # Load environment variables from .env file
 load_dotenv()
@@ -62,6 +77,67 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
+# --- password reset --- 
+@auth_router.post("/forgot-password", summary="Request a password reset email")
+async def forgot_password(request: PasswordResetRequest):
+    """
+    Sends a password reset email to the provided email address using Firebase Auth.
+    """
+
+    action_code_settings = ActionCodeSettings(
+        url="http://localhost:5173/reset-password",
+        handle_code_in_app=False # Use snake_case here for Python SDK class
+    )
+
+    try:
+        # Pass the ActionCodeSettings object correctly
+        await run_in_threadpool(
+            fb_auth.generate_password_reset_link,
+            email=request.email,
+            action_code_settings=action_code_settings
+        )
+        return {"message": "If the email is registered, a password reset link has been sent."}
+
+    except fb_auth.UserNotFoundError:
+        # For security, return a generic success message even if the user isn't found
+        return {"message": "If the email is registered, a password reset link has been sent."}
+    except Exception as e:
+        # Catch other potential errors (e.g., invalid email format, network issues)
+        print(f"Error generating password reset link: {e}")
+        
+        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while trying to send the reset email."
+        )
+
+@auth_router.post("/reset-password", summary="Reset the password using the OOB code")
+async def reset_password(request: PasswordChangeRequest):
+    """
+    Finalizes the password reset using the out-of-band code from the email link
+    and the new password.
+    """
+    try:
+        # Firebase handles verifying the code and updating the password
+        # This function runs synchronously and must be awaited using run_in_threadpool
+        await run_in_threadpool(
+            fb_auth.verify_password_reset_code_and_set_password,
+            oob_code=request.oobCode,
+            new_password=request.newPassword
+        )
+        return {"message": "Your password has been successfully reset."}
+
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid oobCode or new password format."
+        )
+    except Exception as e:
+        print(f"Error resetting password: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The link is invalid or expired. Please request a new one."
+        )
 def getNextOccurance(recurs):
     earliestDate = datetime(9999,1,1)
     now = datetime.now(timezone.utc)
@@ -155,7 +231,7 @@ def delete_expired_events():
 
     # Query for events where 'endDate' is less than the current time
     try:
-        expired_events_query = events_ref.where('end', '<', now_utc)
+        expired_events_query = events_ref.where(filter=FieldFilter('end', '<', now_utc))
         snapshots = expired_events_query.stream() # This returns a sync generator
 
         # A batch allows you to delete multiple documents in a single request.
@@ -208,6 +284,7 @@ async def lifespan(app: FastAPI):
     scheduler.shutdown()
 
 app = FastAPI(lifespan=lifespan)
+app.include_router(auth_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[ALLOWED_ORIGIN],

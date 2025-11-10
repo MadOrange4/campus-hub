@@ -101,7 +101,12 @@ export default function Register() {
       if (name.trim()) {
         await updateProfile(cred.user, { displayName: name.trim() });
       }
-      await sendEmailVerification(cred.user);
+      // --- Explicit settings for the verification link --- 
+      const actionCodeSettings: ActionCodeSettings = {
+        url: 'http://localhost:5173/verify', // <-- Point to your verify page
+        handleCodeInApp: false, // This will open in a browser tab/redirect
+      };
+      await sendEmailVerification(cred.user, actionCodeSettings);
       setSent(true);
     } catch (ex: any) {
       setErr(ex?.code ?? ex?.message ?? "Registration failed");
