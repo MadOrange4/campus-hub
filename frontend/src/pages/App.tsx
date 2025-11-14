@@ -365,15 +365,15 @@ export default function AppPage() {
             <span className="font-semibold">Campus Hub</span>
             <span className="text-text-muted text-sm hidden sm:inline">· Events</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">{/*}
             <button
               onClick={() => nav("/calendar")}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-surface hover:bg-muted"
-              title="Calendar"
+              title="Calendar" 
             >
               <User className="size-4" />
               <span className="hidden sm:inline">Calendar</span>
-            </button>
+            </button>*/}
             <button
               onClick={() => nav("/profile")}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-surface hover:bg-muted"

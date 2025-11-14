@@ -54,6 +54,19 @@ const VIS_OPTIONS: Visibility[] = ["public","campus","private"];
 const PRONOUN_OPTIONS = [
   "he/him","she/her","they/them","he/they","she/they","prefer not to say","self-describe" as const
 ];
+const INTEREST_OPTIONS = [
+  "sports",
+  "music",
+  "gaming",
+  "coding",
+  "fitness",
+  "travel",
+  "volunteering",
+  "art",
+  "entrepreneurship",
+  "research",
+  "greek-life",
+] as const;
 
 export default function Profile() {
   const nav = useNavigate();
@@ -79,6 +92,8 @@ export default function Profile() {
   const [bio, setBio] = useState("");
   const [major, setMajor] = useState<string>("");
   const [year, setYear] = useState<Year | null>(null);
+
+  const [interests, setInterests] = useState<string[]>([]);
 
   // Pronouns: either a preset or custom text when "self-describe"
   const [pronounsPreset, setPronounsPreset] = useState<string>(""); // one of PRONOUN_OPTIONS or ""
@@ -410,6 +425,17 @@ export default function Profile() {
                 />
               </label>
 
+              <label className="text-sm">
+  <span className="block mb-1 text-text-muted">Interests</span>
+  <MultiSelect
+    values={interests}
+    options={INTEREST_OPTIONS}
+    onChange={setInterests}
+    placeholder="Select interests…"
+    render={(v) => capitalize(v)}
+  />
+</label>
+
               {/* Visibility (custom select) */}
               <label className="text-sm">
                 <span className="block mb-1 text-text-muted">Profile visibility</span>
@@ -628,6 +654,97 @@ function CustomSelect<T extends string>({
                 label={lbl}
                 onClick={() => { onChange(opt as T); setOpen(false); }}
               />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+type MultiSelectProps<T extends string> = {
+  values: T[];
+  options: readonly T[];
+  placeholder?: string;
+  onChange: (v: T[]) => void;
+  render?: (v: T) => string;
+};
+
+function MultiSelect<T extends string>({
+  values,
+  options,
+  placeholder = "Select…",
+  onChange,
+  render
+}: MultiSelectProps<T>) {
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (!boxRef.current) return;
+      if (!boxRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const toggle = (opt: T) => {
+    const exists = values.includes(opt);
+    onChange(
+      exists ? values.filter((v) => v !== opt) : [...values, opt]
+    );
+  };
+
+  return (
+    <div className="relative" ref={boxRef}>
+      {/* Button / Field */}
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full min-h-10 flex items-center justify-between flex-wrap gap-2 rounded-xl border border-border bg-surface px-3 py-2 hover:bg-muted text-left"
+      >
+        {values.length === 0 ? (
+          <span className="text-text-muted">{placeholder}</span>
+        ) : (
+          <div className="flex gap-2 flex-wrap">
+            {values.map((v) => (
+              <span
+                key={v}
+                className="inline-flex items-center gap-1 bg-brand/10 text-brand px-2 py-1 rounded-lg text-xs"
+              >
+                {render ? render(v) : v}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggle(v);
+                  }}
+                  className="text-brand hover:text-brand-600"
+                >
+                  
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <ChevronDown className="size-4 shrink-0 text-text-muted ml-auto" />
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute z-30 mt-2 w-full rounded-xl border border-border bg-surface shadow-soft max-h-60 overflow-auto">
+          {options.map((opt) => {
+            const selected = values.includes(opt);
+            return (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => toggle(opt as T)}
+                className="w-full px-3 py-2 flex items-center justify-between hover:bg-muted"
+              >
+                <span>{render ? render(opt) : opt}</span>
+                {selected && <Check className="size-4 text-brand" />}
+              </button>
             );
           })}
         </div>

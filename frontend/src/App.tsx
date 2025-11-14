@@ -6,6 +6,7 @@ import Landing from "./pages/Landing";
 import AppPage from "./pages/App";
 import { useAuth } from "./context/AuthProvider";
 import Register from "./pages/Register";
+import RegisterOrg from "./pages/RegisterOrg";
 import RequireVerified from "./components/RequireVerified";
 import Verify from "./pages/Verify";
 import NewEvent from "./pages/NewEvent";
@@ -43,6 +44,7 @@ export default function App() {
       <Route path="/app" element={<RequireAuth><RequireVerified><AppPage /></RequireVerified></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/registerOrg" element={<RegisterOrg />} />
       <Route path="/verify" element={<Verify />} />
       <Route path="/events/new" element={<NewEvent />} />
       <Route path="/u/:uid" element={<UserProfilePage />} />

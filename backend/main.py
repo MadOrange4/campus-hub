@@ -432,7 +432,7 @@ def delete_me(decoded: dict = Depends(verify_token)):
         user_ref = db.collection("users").document(uid)
 
         # delete subcollections (friends, friendRequests, posts)
-        subcollections = ["friends", "friendRequests", "posts"]
+        subcollections = ["friends", "friendRequests", "posts", "events"]
         for sub in subcollections:
             sub_ref = user_ref.collection(sub)
             for doc in sub_ref.stream():

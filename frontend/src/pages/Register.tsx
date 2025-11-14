@@ -233,10 +233,16 @@ export default function Register() {
                 {loading ? "Creating…" : "Create account"}
               </button>
 
-              <p className="mt-4 text-xs text-text-muted">
+              <p className="mt-4 text-xs text-text-muted text-center">
                 Already have an account?{" "}
                 <Link to="/login" className="underline">
                   Sign in
+                </Link>
+              </p>
+              <p className="mt-4 text-xs text-text muted text-center">
+                Are you an event organizer?{" "}
+                <Link to="/registerOrg" className="underline font-medium">
+                Create organization account
                 </Link>
               </p>
             </>

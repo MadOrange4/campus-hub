@@ -16,7 +16,7 @@ export default function Landing() {
             <a href="#tech" className="px-3 py-2 rounded-xl hover:bg-muted">Tech</a>
           </nav>
           <div className="flex items-center gap-2">
-            <a href="/login" className="px-3 py-2 rounded-xl border border-border hover:bg-muted">Open App</a>
+            <a href="/app" className="px-4 py-2 rounded-xl bg-brand text-background hover:bg-brand-600">Open App</a>
             <a
               href="https://github.com/MadOrange4/campus-hub"
               target="_blank"
