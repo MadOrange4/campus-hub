@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, CheckCircle } from "lucide-react";
 import { isStrongPassword } from "../lib/password-strength.ts";
-
-const API_PREFIX = "/api"; 
+import { auth } from "../lib/firebase"; 
+import { confirmPasswordReset } from "firebase/auth";
 
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
@@ -13,11 +13,9 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showPw, setShowPw] = useState(false);
-  
-  // The 'oobCode' (out-of-band code) is in the URL query parameter
+
   const oobCode = searchParams.get("oobCode");
 
-  // Check if the code exists when the component loads
   useEffect(() => {
     if (!oobCode) {
       setError("Invalid or missing password reset code.");
@@ -32,57 +30,36 @@ export default function ResetPasswordPage() {
     setSuccess(null);
     setLoading(true);
 
-    /*
-    const res = isStrongPassword(pw);
-    if (!res.strong) {
-      const msg =
-        "Your Password is too weak:\n- " +
-        res.issues.filter(Boolean).join("\n- ");
-      setErr(msg);
-      return;
-    }
-    */
+    const strengthCheckResult = isStrongPassword(newPassword);
 
-    if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters long.");
+    if (!strengthCheckResult.strong) {
+      // Format the list of issues into a readable message
+      const msg =
+        "Your password is too weak: \n- " +
+        strengthCheckResult.issues.filter(Boolean).join("\n- ");
+      
+      setError(msg);
       setLoading(false);
-      return;
+      return; // Stop execution if the password is weak
     }
 
     try {
-      // Make the API call to your FastAPI backend endpoint
-      const response = await fetch(`${API_PREFIX}/auth/reset-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          oobCode: oobCode, // This matches your Pydantic model
-          newPassword: newPassword,
-        }),
-      });
+      // Use the client-side Firebase SDK function
+      await confirmPasswordReset(auth, oobCode, newPassword);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        // Handle error responses from FastAPI (e.g., auth/invalid-action-code)
-        throw new Error(data.detail || "Failed to reset password.");
-      }
-
-      setSuccess(data.message || "Your password has been successfully reset!");
+      setSuccess("Your password has been successfully reset!");
       setNewPassword("");
-      // Optional: redirect to login page after a few seconds
+      // Redirect to login page after a few seconds
       setTimeout(() => nav("/login"), 1200);
 
     } catch (err: any) {
-      // This is where you might catch the specific 'auth/invalid-action-code' error
-      console.error(err);
+      // Handle Firebase client errors (e.g., auth/invalid-action-code, auth/expired-action-code)
+      console.error("Password reset error:", err);
       setError(err.message || "An error occurred during password reset.");
     } finally {
       setLoading(false);
     }
-  }
-
+  } 
   return (
     <div className="min-h-dvh bg-background text-text grid place-items-center px-4">
       <div className="w-full max-w-md bg-surface border border-border rounded-2xl shadow-soft p-6">
@@ -100,7 +77,6 @@ export default function ResetPasswordPage() {
             {success}
           </div>
         )}
-
         {!oobCode ? (
              <p className="text-sm text-text-muted">Please check the link in your email.</p>
         ) : (

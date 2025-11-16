@@ -77,67 +77,6 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
-# --- password reset --- 
-@auth_router.post("/forgot-password", summary="Request a password reset email")
-async def forgot_password(request: PasswordResetRequest):
-    """
-    Sends a password reset email to the provided email address using Firebase Auth.
-    """
-
-    action_code_settings = ActionCodeSettings(
-        url="http://localhost:5173/reset-password",
-        handle_code_in_app=False # Use snake_case here for Python SDK class
-    )
-
-    try:
-        # Pass the ActionCodeSettings object correctly
-        await run_in_threadpool(
-            fb_auth.generate_password_reset_link,
-            email=request.email,
-            action_code_settings=action_code_settings
-        )
-        return {"message": "If the email is registered, a password reset link has been sent."}
-
-    except fb_auth.UserNotFoundError:
-        # For security, return a generic success message even if the user isn't found
-        return {"message": "If the email is registered, a password reset link has been sent."}
-    except Exception as e:
-        # Catch other potential errors (e.g., invalid email format, network issues)
-        print(f"Error generating password reset link: {e}")
-        
-        
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while trying to send the reset email."
-        )
-
-@auth_router.post("/reset-password", summary="Reset the password using the OOB code")
-async def reset_password(request: PasswordChangeRequest):
-    """
-    Finalizes the password reset using the out-of-band code from the email link
-    and the new password.
-    """
-    try:
-        # Firebase handles verifying the code and updating the password
-        # This function runs synchronously and must be awaited using run_in_threadpool
-        await run_in_threadpool(
-            fb_auth.verify_password_reset_code_and_set_password,
-            oob_code=request.oobCode,
-            new_password=request.newPassword
-        )
-        return {"message": "Your password has been successfully reset."}
-
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid oobCode or new password format."
-        )
-    except Exception as e:
-        print(f"Error resetting password: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="The link is invalid or expired. Please request a new one."
-        )
 def getNextOccurance(recurs):
     earliestDate = datetime(9999,1,1)
     now = datetime.now(timezone.utc)
