@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { auth } from "../lib/firebase";
 import { applyActionCode } from "firebase/auth";
@@ -9,6 +9,7 @@ export default function Verify() {
   const oobCode = params.get("oobCode");
   const [msg, setMsg] = useState("Verifying your email…");
   const [err, setErr] = useState<string | null>(null);
+  const verificationAttempted = useRef(false);
 
   useEffect(() => {
     
@@ -31,7 +32,10 @@ export default function Verify() {
       }
     };
 
-    handleVerification();
+    if (oobCode && !verificationAttempted.current) {
+        verificationAttempted.current = true; // Set the flag to true
+        handleVerification();
+    }
 
   }, [oobCode, nav]);
 
