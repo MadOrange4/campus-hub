@@ -6,7 +6,8 @@ A lightweight campus events + social app for UMass.
 
 - Event feed with filters (text, tags, date range)  
 - Event details modal with RSVP and live counts  
-- Interactive map (Leaflet) for event locations  
+- Interactive map (Leaflet) for event locations
+- Interactive calender to check time of events selected by user    
 - Friends system (search, requests, accept/decline, unfriend)  
 - Role-gated event creation (admins only)  
 - Profile editing (bio, year, pronouns, phone, visibility)  

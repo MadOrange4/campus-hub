@@ -1,20 +1,71 @@
 import os
+from dotenv import load_dotenv
 from typing import Optional, Literal, List, Dict, Any
 
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Body, Path
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRouter
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
+from datetime import datetime, timezone
+from contextlib import asynccontextmanager
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 
+import asyncio
+from firebase_admin.auth import ActionCodeSettings 
 from google.cloud.firestore_v1 import Increment
+from google.cloud.firestore_v1.base_query import FieldFilter
 import firebase_admin
 from firebase_admin import auth as fb_auth, credentials, firestore
 
 # Alias for clarity in transactional sections
 afs = firestore
 
+auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+class PasswordResetRequest(BaseModel):
+    email: str = Field(..., example="user@umass.edu", description="The user's registered email address")
+
+class PasswordChangeRequest(BaseModel):
+    oobCode: str = Field(..., description="The out-of-band code received in the reset link")
+    newPassword: str = Field(..., min_length=6, description="The new password")
+
+class EmailVerificationRequest(BaseModel):
+    email: str = Field(..., example="user@umass.edu", description="The user's email address to verify")
+
+# Load environment variables from .env file
+load_dotenv()
+
 ALLOWED_ORIGIN = "http://localhost:5173"
 ALLOWED_DOMAIN = "umass.edu"
+
+EVENT_FIELDNAMES = []
+
+EVENT_IS_RECURRING_FIELDNAME = "recurs"
+EVENT_FIELDNAMES.append(EVENT_IS_RECURRING_FIELDNAME)
+EVENT_BANNER_URL_FIELDNAME = "bannerUrl"
+EVENT_FIELDNAMES.append(EVENT_BANNER_URL_FIELDNAME)
+EVENT_CREATED_AT_FIELDNAME = "createdAt"
+EVENT_FIELDNAMES.append(EVENT_CREATED_AT_FIELDNAME)
+EVENT_CREATED_BY_FIELDNAME = "createdBy"
+EVENT_FIELDNAMES.append(EVENT_CREATED_BY_FIELDNAME)
+EVENT_DESC_FIELDNAME = "desc"
+EVENT_FIELDNAMES.append(EVENT_DESC_FIELDNAME)
+EVENT_END_FIELDNAME = "end"
+EVENT_FIELDNAMES.append(EVENT_END_FIELDNAME)
+EVENT_LOCATION_FIELDNAME = "location"
+EVENT_FIELDNAMES.append(EVENT_LOCATION_FIELDNAME)
+EVENT_LOCATION_NAME_FIELDNAME = "locationName"
+EVENT_FIELDNAMES.append(EVENT_LOCATION_NAME_FIELDNAME)
+EVENT_START_FIELDNAME = "start"
+EVENT_FIELDNAMES.append(EVENT_START_FIELDNAME)
+EVENT_TAGS_FIELDNAME = "tags"
+EVENT_FIELDNAMES.append(EVENT_TAGS_FIELDNAME)
+EVENT_TITLE_FIELDNAME = "title"
+EVENT_FIELDNAMES.append(EVENT_TITLE_FIELDNAME)
+EVENT_UPDATED_AT_FIELDNAME = "updatedAt" 
+EVENT_FIELDNAMES.append(EVENT_UPDATED_AT_FIELDNAME)
 
 # --- Firebase Admin init ---
 if not firebase_admin._apps:
@@ -26,7 +77,153 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
-app = FastAPI()
+def getNextOccurance(recurs):
+    earliestDate = datetime(9999,1,1)
+    now = datetime.now(timezone.utc)
+    day = now.weekday()
+    month = now.month
+    year = now.year
+    i = 0
+    j = 0
+    k = 0
+    flag = False
+    dayInc = 0
+    for char in recurs:
+        match char:
+            case "M":
+                dayInc = -day
+                break
+            case "T":
+                dayInc = -day + 1
+                break
+            case "W":
+                dayInc = -day + 2
+                break
+            case "t":
+                dayInc = -day + 3
+                break
+            case "F":
+                dayInc = -day + 4
+                break
+            case "S":
+                dayInc = -day + 5
+                break
+            case "s":
+                dayInc = -day + 6
+                break
+            case _:
+                if i==0:
+                    j+=int(char)*10
+                    i+=1
+                elif i ==1: 
+                    j+=int(char)
+                    i+=1
+                elif i ==2:
+                    k+=10*int(char)
+                    i+=1
+                else:
+                    k+=int(char)
+                    flag = True
+                    i = 0
+                break
+        if flag:
+            if dayInc <= 0:
+                dayInc +=7
+            newDay = day + dayInc
+            occurrance = datetime(year,month,newDay,j,k)
+            j=0
+            k=0
+            flag = False
+            if occurrance < earliestDate:
+                earliestDate = occurrance
+    return earliestDate
+
+
+            
+#TODO after testing, we need to implement this function
+#TODO completely untested
+def recur_events():
+    time = firestore.SERVER_TIMESTAMP
+    try:
+        recurring_events = db.collection('events').where(EVENT_IS_RECURRING_FIELDNAME, "!=", "0").get()
+    except Exception as e:
+        print(f"Unexpected {e=}, {type(e)=}")
+        return
+    for event in recurring_events:
+        doc = event.data()
+        event.update({EVENT_END_FIELDNAME : getNextOccurance(doc[EVENT_IS_RECURRING_FIELDNAME])})
+        event.update({EVENT_UPDATED_AT_FIELDNAME:time})
+    
+
+# --- deleting expired events ---
+
+def delete_expired_events():
+    """
+    Background task to find and delete expired events from Firestore.
+    """
+    print("Running background task to delete expired events...")
+    # Define the collection where your events are stored
+    events_ref = db.collection('events')
+
+    # Use a standard datetime object for the query comparison
+    now_utc = datetime.now(timezone.utc)
+
+    # Query for events where 'endDate' is less than the current time
+    try:
+        expired_events_query = events_ref.where(filter=FieldFilter('end', '<', now_utc))
+        snapshots = expired_events_query.stream() # This returns a sync generator
+
+        # A batch allows you to delete multiple documents in a single request.
+        batch = db.batch()
+        count = 0
+
+        # Loop over the synchronous generator
+        for doc_snapshot in snapshots:
+            batch.delete(doc_snapshot.reference)
+            count += 1
+            if count % 500 == 0:
+                batch.commit() # Commit synchronously
+                batch = db.batch()
+
+        if count > 0:
+            batch.commit() # Commit the final batch
+            print(f"Deleted {count} expired events.")
+        else:
+            print("No expired events found.")
+
+    except Exception as e:
+        print(f"Error during expired event cleanup: {e}")
+
+
+# Initialize the scheduler globally to be accessed in the lifespan context manager
+scheduler = AsyncIOScheduler()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Application startup...")
+
+    # Your existing startup logic
+    if not firebase_admin._apps:
+        cred_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+        if not cred_path:
+            raise RuntimeError("GOOGLE_APPLICATION_CREDENTIALS env var is not set")
+        cred = credentials.Certificate(cred_path)
+        firebase_admin.initialize_app(cred)
+    
+    # 1. Run initial cleanup immediately in a threadpool
+    await run_in_threadpool(delete_expired_events)
+
+    # 2. Start the periodic scheduler, which will also use run_in_threadpool
+    scheduler.add_job(lambda: asyncio.create_task(run_in_threadpool(delete_expired_events)), IntervalTrigger(hours=24))
+    scheduler.start()
+    
+    yield
+
+    # 3. Shut down the scheduler gracefully
+    scheduler.shutdown()
+
+app = FastAPI(lifespan=lifespan)
+app.include_router(auth_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[ALLOWED_ORIGIN],
@@ -59,6 +256,7 @@ def verify_token(req: Request):
 Role = Literal["student","staff","admin","professor","ta","club_officer"]
 Year = Literal["freshman","sophomore","junior","senior","grad","alumni","staff","faculty","other"]
 Visibility = Literal["public","campus","private"]
+Preference_Types = Literal["defaultPreference","preference1","preference2"]
 
 class UserProfile(BaseModel):
     uid: str
@@ -73,17 +271,16 @@ class UserProfile(BaseModel):
     pronouns: Optional[str] = None
     phone: Optional[str] = None
     visibility: Visibility = "campus"
-    notificationPrefs: Dict[str, bool] = Field(
-        default_factory=lambda: {"eventReminders": True, "emailUpdates": False, "push": True}
-    )
+    notificationPrefs: Dict[str, bool] = Field(default_factory=lambda: {"eventReminders": True, "emailUpdates": False, "push": True})
     domainOk: bool = True
     isStaffVerified: bool = False
     createdAt: Optional[Any] = None
     updatedAt: Optional[Any] = None
-
+    #TODO something may be wrong...
+    preferences: List[Preference_Types] = Field(default_factory=list)
 # Fields users are allowed to update via PATCH
 ALLOWED_USER_FIELDS = {
-    "name","photoURL","year","major","bio","pronouns","phone","visibility","notificationPrefs"
+    "name","photoURL","year","major","bio","pronouns","phone","visibility","notificationPrefs","preferences"
 }
 
 def _defaults_for_new_user(uid: str, email: str, name: Optional[str], photo: Optional[str]) -> dict:
@@ -99,6 +296,8 @@ def _defaults_for_new_user(uid: str, email: str, name: Optional[str], photo: Opt
         "bio": "",
         "pronouns": None,
         "phone": None,
+        #TODO something may be wrong...
+        "preferences": ["defaultPreference"],
         "visibility": "campus",
         "notificationPrefs": {"eventReminders": True, "emailUpdates": False, "push": True},
         "domainOk": email.endswith(f"@{ALLOWED_DOMAIN}"),
@@ -137,11 +336,13 @@ def get_or_create_me(decoded: dict = Depends(verify_token)):
     name = decoded.get("name")
     picture = decoded.get("picture")
 
+    
     ref = db.collection("users").document(uid)
-    snap = ref.get()
+    snap = ref.get()  
     if not snap.exists:
-        ref.set(_defaults_for_new_user(uid, email, name, picture))
-        snap = ref.get()
+        #some things are wrong so this is a temporary fix
+        
+        snap = ref.get(_defaults_for_new_user(uid, email, name, picture))
     return _doc_to_profile(snap)
 
 @app.patch("/users/me", response_model=UserProfile)
@@ -154,7 +355,6 @@ def update_me(payload: dict = Body(...), decoded: dict = Depends(verify_token)):
         name = decoded.get("name")
         picture = decoded.get("picture")
         ref.set(_defaults_for_new_user(uid, email, name, picture))
-
     update_data = {k: v for k, v in payload.items() if k in ALLOWED_USER_FIELDS}
     if not update_data:
         raise HTTPException(status_code=400, detail="No writable fields provided.")
@@ -171,7 +371,7 @@ def delete_me(decoded: dict = Depends(verify_token)):
         user_ref = db.collection("users").document(uid)
 
         # delete subcollections (friends, friendRequests, posts)
-        subcollections = ["friends", "friendRequests", "posts"]
+        subcollections = ["friends", "friendRequests", "posts", "events"]
         for sub in subcollections:
             sub_ref = user_ref.collection(sub)
             for doc in sub_ref.stream():
@@ -442,4 +642,6 @@ def status(other_uid: str, decoded: dict = Depends(verify_token)):
 
 # Mount router
 app.include_router(friends)
+
+
 

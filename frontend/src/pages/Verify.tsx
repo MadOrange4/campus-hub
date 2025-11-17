@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { auth } from "../lib/firebase";
-import { applyActionCode, checkActionCode } from "firebase/auth";
+import { applyActionCode } from "firebase/auth";
 
 export default function Verify() {
   const [params] = useSearchParams();
@@ -9,13 +9,17 @@ export default function Verify() {
   const oobCode = params.get("oobCode");
   const [msg, setMsg] = useState("Verifying your email…");
   const [err, setErr] = useState<string | null>(null);
+  const verificationAttempted = useRef(false);
 
   useEffect(() => {
-    (async () => {
-      if (!oobCode) { setErr("Missing verification code."); return; }
+    
+      const handleVerification = async () => {
+      if (!oobCode) { 
+        setErr("Missing verification code."); 
+        return; 
+      }
       try {
         // Optional: pre-check to give nicer errors
-        await checkActionCode(auth, oobCode);
         await applyActionCode(auth, oobCode);
         setMsg("Email verified! You can sign in now.");
         // If the user is signed in, refresh their token so emailVerified updates:
@@ -23,9 +27,16 @@ export default function Verify() {
         // Bounce to login (or /app if you prefer)
         setTimeout(() => nav("/login", { replace: true }), 1200);
       } catch (e: any) {
+        console.error("Verification error:", e);
         setErr(e?.message ?? "Verification link invalid or expired. Please request a new one.");
       }
-    })();
+    };
+
+    if (oobCode && !verificationAttempted.current) {
+        verificationAttempted.current = true; // Set the flag to true
+        handleVerification();
+    }
+
   }, [oobCode, nav]);
 
   return (

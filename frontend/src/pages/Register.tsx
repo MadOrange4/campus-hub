@@ -5,7 +5,7 @@ import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
   updateProfile,
-} from "firebase/auth";
+} from "../../node_modules/firebase/auth";
 import { isAllowedEmail } from "../lib/auth-domain";
 import { Mail, Eye, EyeOff, UserPlus } from "lucide-react";
 import { isStrongPassword } from "../lib/password-strength.ts";
@@ -101,7 +101,12 @@ export default function Register() {
       if (name.trim()) {
         await updateProfile(cred.user, { displayName: name.trim() });
       }
-      await sendEmailVerification(cred.user);
+      // --- Explicit settings for the verification link --- 
+      const actionCodeSettings: ActionCodeSettings = {
+        url: 'http://localhost:5173/verify', // <-- Point to your verify page
+        handleCodeInApp: false, // This will open in a browser tab/redirect
+      };
+      await sendEmailVerification(cred.user, actionCodeSettings);
       setSent(true);
     } catch (ex: any) {
       setErr(ex?.code ?? ex?.message ?? "Registration failed");
@@ -228,10 +233,16 @@ export default function Register() {
                 {loading ? "Creating…" : "Create account"}
               </button>
 
-              <p className="mt-4 text-xs text-text-muted">
+              <p className="mt-4 text-xs text-text-muted text-center">
                 Already have an account?{" "}
                 <Link to="/login" className="underline">
                   Sign in
+                </Link>
+              </p>
+              <p className="mt-4 text-xs text-text muted text-center">
+                Are you an event organizer?{" "}
+                <Link to="/registerOrg" className="underline font-medium">
+                Create organization account
                 </Link>
               </p>
             </>
