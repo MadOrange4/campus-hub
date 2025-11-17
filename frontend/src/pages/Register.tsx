@@ -239,12 +239,6 @@ export default function Register() {
                   Sign in
                 </Link>
               </p>
-              <p className="mt-4 text-xs text-text muted text-center">
-                Are you an event organizer?{" "}
-                <Link to="/registerOrg" className="underline font-medium">
-                Create organization account
-                </Link>
-              </p>
             </>
           ) : (
             <>
