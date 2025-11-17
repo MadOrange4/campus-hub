@@ -11,6 +11,7 @@ import RequireVerified from "./components/RequireVerified";
 import Verify from "./pages/Verify";
 import NewEvent from "./pages/NewEvent";
 import UserProfilePage from "./pages/UserProfile";
+import CalendarRoute from "./pages/CalendarRoute";
 import Calendar from "./pages/Calendar";
 import HandleAuthActionPage from "./pages/HandleAuthActionPage"; 
 import ResetPasswordPage from "./pages/ResetPasswordPage"; 
