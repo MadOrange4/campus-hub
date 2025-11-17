@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { auth, db } from "../lib/firebase";
 import { onAuthStateChanged, signOut, getAuth} from "firebase/auth";
 import {
@@ -501,6 +501,13 @@ export default function Profile() {
                 Switch to {dark ? "Light" : "Dark"}
              </button>
             </li>
+
+            <li className="mt-4 text-xs text-text muted text-center">
+                Are you an event organizer?{" "}
+                <Link to="/registerOrg" className="underline font-medium">
+                Create organization account
+                </Link>
+              </li>
          </ul>
 
            {/* Delete Account */}

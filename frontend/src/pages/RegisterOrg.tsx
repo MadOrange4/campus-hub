@@ -2,54 +2,70 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { auth, db } from "../lib/firebase";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { doc, getDoc, deleteDoc } from "firebase/firestore";
-import { KeyRound, Lock, Building2 } from "lucide-react";
+import { doc, getDoc, deleteDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { KeyRound, Mail, Lock, Building2, User, FileText } from "lucide-react";
 
-export default function RegisterOrg() {
-  const nav = useNavigate();
-  const [key, setKey] = useState("");
-  const [pw, setPw] = useState("");
+export default function OrgApplication() {
+  const [orgName, setOrgName] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [social, setSocial] = useState("");
+  const [description, setDescription] = useState("");
+  
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
+    setSuccess(false);
+
+    if (!orgName || !contactName || !contactEmail || !social || !description) {
+        setErr("Please fill out all required fields.");
+        return;
+    }
+
     try {
       setLoading(true);
-      
-      //Verify org key
-      const keyRef = doc(db, "orgKeys", key);
-      const keySnap = await getDoc(keyRef);
-      if (!keySnap.exists()) throw new Error("Invalid or expired organization key");
-      const orgData = keySnap.data();
 
-      //Create org account
-      const cred = await createUserWithEmailAndPassword(auth, orgData.email, pw);
-      await updateProfile(cred.user, { displayName: orgData.name });
+      // Add a new document to the "orgApplications" collection
+      await addDoc(collection(db, "orgApplications"), {
+        orgName,
+        orgNameLower: orgName.toLowerCase(),
+        contactName,
+        contactEmail: contactEmail.toLowerCase(),
+        social,
+        description,
+        status: "pending", // Admin can review this
+        submittedAt: serverTimestamp(),
+      });
 
-      //Delete key (one-time use)
-      await deleteDoc(keyRef);
+      setSuccess(true);
+      // Reset form
+      setOrgName("");
+      setContactName("");
+      setContactEmail("");
+      setSocial("");
+      setDescription("");
 
-      //Step 4: Redirect
-      nav("/login");
     } catch (ex: any) {
-      setErr(ex?.code ?? ex?.message ?? "Registration failed");
+      setErr(ex?.message ?? "Application failed to submit. Please try again.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-dvh grid place-items-center bg-background text-text px-4">
+    <div className="min-h-dvh grid place-items-center bg-background text-text px-4 py-8">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center size-12 rounded-2xl bg-brand/10 border border-brand/20">
             <Building2 className="size-6 text-brand" />
           </div>
-          <h1 className="mt-3 text-2xl font-semibold">Organization Account</h1>
+          <h1 className="mt-3 text-2xl font-semibold">Organization Application</h1>
           <p className="text-sm text-text-muted">
-            Use your unique organization key to register.
+            Submit your club's information for approval.
           </p>
         </div>
 
@@ -59,43 +75,83 @@ export default function RegisterOrg() {
               {err}
             </div>
           )}
+          {success && (
+             <div className="mb-4 rounded-xl border border-success/40 bg-success/10 text-success px-3 py-2 text-sm">
+              Application submitted! We'll review it and get back to you soon.
+            </div>
+          )}
 
-          <label className="block text-sm font-medium mb-1">Organization Key</label>
-          <div className="relative">
+          <label className="block text-sm font-medium mb-1">Organization Name</label>
+          <div className="relative mb-4">
             <input
               className="w-full rounded-xl border border-border bg-surface px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-brand"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              placeholder="Enter provided key"
+              value={orgName}
+              onChange={(e) => setOrgName(e.target.value)}
+              placeholder="e.g. 'Coding Club'"
               type="text"
               required
             />
-            <KeyRound className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-text-muted" />
+            <Building2 className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-text-muted" />
           </div>
 
-          <label className="block text-sm font-medium mt-4 mb-1">Set Password</label>
-          <div className="relative">
+          <label className="block text-sm font-medium mb-1">Your Full Name</label>
+          <div className="relative mb-4">
             <input
-              className="w-full rounded-xl border border-border bg-surface px-3 py-2 outline-none focus:ring-2 focus:ring-brand"
-              value={pw}
-              onChange={(e) => setPw(e.target.value)}
-              placeholder="••••••••"
-              type="password"
+              className="w-full rounded-xl border border-border bg-surface px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-brand"
+              value={contactName}
+              onChange={(e) => setContactName(e.target.value)}
+              placeholder="e.g. 'Jane Doe'"
+              type="text"
               required
             />
-            <Lock className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-text-muted" />
+            <User className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-text-muted" />
+          </div>
+
+          <label className="block text-sm font-medium mb-1">School Email</label>
+          <div className="relative mb-4">
+            <input
+              className="w-full rounded-xl border border-border bg-surface px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-brand"
+              value={contactEmail}
+              onChange={(e) => setContactEmail(e.target.value)}
+              placeholder="Your email address"
+              type="email"
+              required
+            />
+            <Mail className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-text-muted" />
+          </div>
+          
+          <label className="block text-sm font-medium mb-1">Club Description</label>
+          <div className="relative mb-4">
+            <textarea
+              className="w-full min-h-[80px] rounded-xl border border-border bg-surface px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-brand"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What is your club about?"
+            />
+            <FileText className="absolute right-3 top-3.5 size-4 text-text-muted" />
+          </div>
+
+          <label className="block text-sm font-medium mb-1">Club Community</label>
+          <div className="relative mb-4">
+            <textarea
+              className="w-full min-h-[80px] rounded-xl border border-border bg-surface px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-brand"
+              value={social}
+              onChange={(e) => setSocial(e.target.value)}
+              placeholder="Instagram page, organizaiton website, etc..."
+            />
+            <FileText className="absolute right-3 top-3.5 size-4 text-text-muted" />
           </div>
 
           <button
             disabled={loading}
             className="mt-5 w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-brand text-background hover:bg-brand-600 disabled:opacity-70"
           >
-            {loading ? "Creating…" : "Create Organization Account"}
+            {loading ? "Submitting…" : "Submit Application"}
           </button>
 
           <p className="mt-4 text-xs text-text-muted text-center">
-            <Link to="/register" className="underline">
-              Back to student registration
+            <Link to="/profile" className="underline">
+              Back to Profile
             </Link>
           </p>
         </form>
