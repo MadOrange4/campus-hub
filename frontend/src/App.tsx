@@ -12,7 +12,6 @@ import Verify from "./pages/Verify";
 import NewEvent from "./pages/NewEvent";
 import UserProfilePage from "./pages/UserProfile";
 import CalendarRoute from "./pages/CalendarRoute";
-import Calendar from "./pages/Calendar";
 import HandleAuthActionPage from "./pages/HandleAuthActionPage"; 
 import ResetPasswordPage from "./pages/ResetPasswordPage"; 
 import { useState, type JSX } from "react";
@@ -49,7 +48,7 @@ export default function App() {
       <Route path="/verify" element={<Verify />} />
       <Route path="/events/new" element={<NewEvent />} />
       <Route path="/u/:uid" element={<UserProfilePage />} />
-      <Route path="/calendar" element={<Calendar
+      <Route path="/calendar" element={<CalendarRoute
             currentDate={currentDate}
             setCurrentDate={setCurrentDate}
             onDateSelect={handleDateSelection}

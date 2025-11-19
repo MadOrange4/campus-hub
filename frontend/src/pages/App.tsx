@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   CalendarDays,
   Filter,
@@ -54,6 +54,7 @@ type EventItem = {
 
 export default function AppPage() {
   const nav = useNavigate();
+  const location = useLocation();
   const [user, setUser] = useState<FirebaseUser | null>(null);
 
   const [isAdmin, setIsAdmin] = useState(false);
@@ -337,6 +338,25 @@ export default function AppPage() {
   // Details modal state
   const [openId, setOpenId] = useState<string | null>(null);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const eventIdFromUrl = params.get('e');
+
+    if (eventIdFromUrl) {
+      // Check if the event ID is already open or a valid ID before setting state
+      if (eventIdFromUrl !== openId) {
+        setOpenId(eventIdFromUrl);
+      }
+      // Clean up the URL after opening the modal to prevent it from reopening on refresh
+      // This is a common pattern, but requires state manipulation (use replace)
+      // We only clean if we are sure we opened it, so we'll do it later in the onClose
+      
+    } else if (openId && location.pathname === '/app') {
+      // If there is no 'e' param, but a modal is open, ensure it's closed (or handle back/forward)
+      // This is less critical but good practice.
+    }
+  }, [location.search]); // Re-run when the search part of the URL changes
+
   async function doLogout() {
     await signOut(auth);
     nav("/login", { replace: true });
@@ -351,7 +371,16 @@ export default function AppPage() {
   }
 
   const openEvent = (id: string) => setOpenId(id);
-  const closeEvent = () => setOpenId(null);
+  const closeEvent = () => {
+    setOpenId(null);
+    // CRITICAL: Remove the ?e=ID from the URL when the modal closes
+    // Use replace to avoid adding a new history entry
+    const params = new URLSearchParams(location.search);
+    if (params.has('e')) {
+        params.delete('e');
+        nav(location.pathname + (params.toString() ? `?${params.toString()}` : ''), { replace: true });
+    }
+  };
 
   return (
     <div className="min-h-dvh bg-background text-text">
@@ -365,15 +394,7 @@ export default function AppPage() {
             <span className="font-semibold">Campus Hub</span>
             <span className="text-text-muted text-sm hidden sm:inline">· Events</span>
           </div>
-          <div className="flex items-center gap-2">{/*}
-            <button
-              onClick={() => nav("/calendar")}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-surface hover:bg-muted"
-              title="Calendar" 
-            >
-              <User className="size-4" />
-              <span className="hidden sm:inline">Calendar</span>
-            </button>*/}
+          <div className="flex items-center gap-2">
             <button
               onClick={() => nav("/calendar")}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-surface hover:bg-muted"

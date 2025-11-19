@@ -107,7 +107,7 @@ export default function UserProfilePage() {
           isStaffVerified: !!d.isStaffVerified,
           friendsCount: Number(d.friendsCount || 0),
           pendingCount: Number(d.pendingCount || 0),
-          preferences: d.preferences || [],
+          preferences: d.preferences || ["defaultPreference"],
         });
       } catch (e: any) {
         setErr(e.message || "Failed to load profile");
