@@ -79,7 +79,7 @@ export default function Login() {
           // nice-to-have counters (optional)
           friendsCount: 0,
           pendingCount: 0,
-          preferences: [""]
+          preferences: ["defaultPreferences"]
         },
         { merge: true }
       );
