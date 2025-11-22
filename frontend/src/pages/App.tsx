@@ -1054,8 +1054,14 @@ function EventDetailsModal({
     setSaving(true);
     setErr(null);
     try {
-      const myRef = doc(db, "events", eventId, "rsvps", currentUser.uid);
-      await setDoc(myRef, { uid: currentUser.uid, attending: true, createdAt: serverTimestamp() }, { merge: true });
+      // 1. Write to the event's RSVP list (Original logic, used for event attendance count)
+      const myEventRef = doc(db, "events", eventId, "rsvps", currentUser.uid);
+      await setDoc(myEventRef, { uid: currentUser.uid, attending: true, createdAt: serverTimestamp() }, { merge: true });
+
+      // 2. NEW: Write to the user's RSVP list (Denormalized for the Calendar view)
+      const myUserRef = doc(db, "users", currentUser.uid, "rsvps", eventId);
+      await setDoc(myUserRef, { attending: true, createdAt: serverTimestamp() }); // Placeholder doc
+
       setAttending(true);
       setRsvpCount((c) => c + 1);
     } catch (e: any) {
@@ -1069,8 +1075,14 @@ function EventDetailsModal({
     setSaving(true);
     setErr(null);
     try {
-      const myRef = doc(db, "events", eventId, "rsvps", currentUser.uid);
-      await deleteDoc(myRef);
+      // 1. Delete from the event's RSVP list (Original logic)
+      const myEventRef = doc(db, "events", eventId, "rsvps", currentUser.uid);
+      await deleteDoc(myEventRef);
+
+      // 2. NEW: Delete from the user's RSVP list (Denormalized cleanup)
+      const myUserRef = doc(db, "users", currentUser.uid, "rsvps", eventId);
+      await deleteDoc(myUserRef);
+      
       setAttending(false);
       setRsvpCount((c) => Math.max(0, c - 1));
     } catch (e: any) {
