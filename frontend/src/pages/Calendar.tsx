@@ -23,6 +23,8 @@ interface CalendarProps {
   onDateSelect: (date: Date) => void;
   events: EventItem[]; // Prop for all events
   onEventClick: (id: string) => void; 
+  showOnlyAttending: boolean;
+  onToggleAttending: () => void;
 }
 
 // Map event tags to dot classes/colors for the CSS
@@ -86,7 +88,15 @@ const EventDetailsPopover: React.FC<PopoverProps> = ({ events, date, onEventClic
 };
 
 // --- Main Component: FullCalendar ---
-export default function Calendar({ currentDate, setCurrentDate, onDateSelect, events, onEventClick }: CalendarProps) {
+export default function Calendar({ 
+  currentDate, 
+  setCurrentDate, 
+  onDateSelect, 
+  events, 
+  onEventClick, 
+  showOnlyAttending,
+  onToggleAttending,  
+}: CalendarProps) {
   const navigate = useNavigate();
   const today = useMemo(() => new Date(), []);
   
@@ -168,13 +178,12 @@ export default function Calendar({ currentDate, setCurrentDate, onDateSelect, ev
   }
 
   return (
-    // Replaced .modal-overlay with .full-calendar-container
     <div className="full-calendar-container">
       <div className="calendar-header">
         <button className="header-controls" onClick={handleBack}>
           &larr; Back
         </button>
-        <div className="header-center-controls"> {/* <-- NEW WRAPPER CLASS */}
+        <div className="header-center-controls"> {/* <-- Center Controls */}
             <div className="month-nav">
                 <button onClick={handlePrevMonth}>&lt;</button>
                 <h2>
@@ -186,7 +195,13 @@ export default function Calendar({ currentDate, setCurrentDate, onDateSelect, ev
                 <CalendarDays className="size-4" /> Today
             </button>
         </div>
-        <div className="header-controls-placeholder" /> {/* <-- NEW PLACEHOLDER */}
+        <button 
+          onClick={onToggleAttending}
+          className="header-controls"
+          title={showOnlyAttending ? "Show All Events" : "Show Only Attending Events"}
+        >
+          {showOnlyAttending ? "Show All" : "Attending"}
+        </button>
       </div>
       <div className="weekdays">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
