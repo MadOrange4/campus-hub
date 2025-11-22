@@ -1,5 +1,5 @@
 // src/pages/CalendarRoute.tsx - Transformed & Refined
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo} from "react";
 // Import the updated EventItem type from the transformed Calendar file
 import Calendar, { type EventItem } from "./Calendar"; 
 import { db } from "../lib/firebase";
@@ -12,7 +12,12 @@ import {
   Timestamp, // Import Timestamp for consistency with App.tsx mapping helpers
 } from "firebase/firestore";
 import { useNavigate } from "react-router-dom"; 
+import { CalendarDays } from "lucide-react";
 
+interface FirebaseUser {
+  uid: string;
+  // ... other properties
+}
 
 /** keep the same mapping logic as pages/App.tsx */
 function tsToISO(ts: any): string {
@@ -46,41 +51,82 @@ export default function CalendarRoute({
   currentDate,
   setCurrentDate,
   onDateSelect,
+  currentUser,
 }: {
   currentDate: Date;
   setCurrentDate: (d: Date) => void;
   onDateSelect: (d: Date) => void;
+  currentUser: FirebaseUser;
 }) {
-  const [events, setEvents] = useState<EventItem[]>([]);
+  const [allEvents, setAllEvents] = useState<EventItem[]>([]);
+  const [attendingEventIds, setAttendingEventIds] = useState<Set<string>>(new Set()); 
+  const [showOnlyAttending, setShowOnlyAttending] = useState(true); 
   const navigate = useNavigate();
 
+  if (!currentUser || !currentUser.uid) {
+      // This is the simplest graceful exit. 
+      // You could also show a "Loading..." screen if you prefer.
+      return <div className="min-h-dvh grid place-items-center bg-background text-text">
+        <p>Loading user data for calendar...</p>
+      </div>;
+  }
+
+  // Load ALL events
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
-    // This query fetches ALL events, which is correct for a multi-month calendar view,
-    // as it does not include the date-range 'where' clauses used in App.tsx feed.
     const qy = query(collection(db, "events"), orderBy("start", "asc"));
     const off = onSnapshot(
       qy,
       (snap) => {
         const rows: EventItem[] = snap.docs.map((d) => mapEventDoc(d.id, d.data()));
-        setEvents(rows);
+        setAllEvents(rows);
       },
-      () => setEvents([])
+      () => setAllEvents([])
     );
     return () => off();
-  }, []); // Empty dependency array ensures it only runs once and loads ALL events.
+  }, []);
+
+  // Load the IDs of events the current user is attending (RSVPs)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    // Query the collection: users/{currentUser.uid}/rsvps (denormalized path from App.tsx change)
+    const rsvpQuery = collection(db, "users", currentUser.uid, "rsvps");
+
+    const offRsvps = onSnapshot(
+      rsvpQuery,
+      (snap) => {
+        const ids = new Set(snap.docs.map((d) => d.id));
+        setAttendingEventIds(ids);
+      },
+      () => setAttendingEventIds(new Set())
+    );
+    return () => offRsvps();
+  }, [currentUser.uid]);
+
+  // Filter the events list based on the toggle and attending IDs
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const filteredEvents = useMemo(() => {
+      if (showOnlyAttending) {
+          return allEvents.filter(event => attendingEventIds.has(event.id));
+      }
+      return allEvents;
+  }, [allEvents, attendingEventIds, showOnlyAttending]);
+
+  const handleToggleAttending = () => setShowOnlyAttending(s => !s); 
 
   return (
-    <Calendar
-      currentDate={currentDate}
-      setCurrentDate={setCurrentDate}
-      onDateSelect={onDateSelect}
-      events={events} // Passing the full, unfiltered list of events
-      // Optional: jump to feed with selected event id
-      onEventClick={(id) => {
-        // If later you want the details modal to auto-open,
-        // read ?e=ID in pages/App.tsx and open it.
-        navigate(`/app?e=${encodeURIComponent(id)}`);
-      }}
-    />
+    <div className="calendar-route-container">
+      <Calendar
+        currentDate={currentDate}
+        setCurrentDate={setCurrentDate}
+        onDateSelect={onDateSelect}
+        events={filteredEvents} 
+        onEventClick={(id) => {
+          navigate(`/app?e=${encodeURIComponent(id)}`);
+        }}
+        showOnlyAttending={showOnlyAttending}
+        onToggleAttending={handleToggleAttending}
+      />
+    </div>
   );
 }

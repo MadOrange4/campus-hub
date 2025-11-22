@@ -23,15 +23,12 @@ function RequireAuth({ children }: { children: JSX.Element }) {
 }
 
 export default function App() {
+  const { user } = useAuth(); // <-- NEW: Access the user object here
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(true);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  const openCalendar = (): void => setIsCalendarOpen(true);
-  const closeCalendar = (): void => setIsCalendarOpen(false);
   const handleDateSelection = (date: Date): void => {
     setSelectedDate(date);
-    closeCalendar();
   };
 
   return (
@@ -40,20 +37,29 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/handle-auth-action" element={<HandleAuthActionPage />} /> 
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      
+      {/* AUTHENTICATED ROUTES */}
       <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
       <Route path="/app" element={<RequireAuth><RequireVerified><AppPage /></RequireVerified></RequireAuth>} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="/events/new" element={<RequireAuth><NewEvent /></RequireAuth>} />
+      <Route path="/u/:uid" element={<RequireAuth><UserProfilePage /></RequireAuth>} />
+      
+      {/* CALENDAR ROUTE */}
+      <Route path="/calendar" element={
+        <RequireAuth>
+          <CalendarRoute
+            currentDate={currentDate}
+            setCurrentDate={setCurrentDate}
+            onDateSelect={handleDateSelection} 
+            currentUser={user!} 
+          />
+        </RequireAuth>
+      } />
+
       <Route path="/register" element={<Register />} />
       <Route path="/registerOrg" element={<RegisterOrg />} />
       <Route path="/verify" element={<Verify />} />
-      <Route path="/events/new" element={<NewEvent />} />
-      <Route path="/u/:uid" element={<UserProfilePage />} />
-      <Route path="/calendar" element={<CalendarRoute
-            currentDate={currentDate}
-            setCurrentDate={setCurrentDate}
-            onDateSelect={handleDateSelection}
-          />
-        } />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
