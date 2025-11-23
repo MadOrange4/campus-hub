@@ -20,12 +20,13 @@ import {
   query,
   orderBy,
 } from "firebase/firestore";
+import { PRONOUN_OPTIONS, YEAR_OPTIONS, INTEREST_OPTIONS, VIS_OPTIONS, type Visibility, type Year, type UserProfile, type UserObj, userObjUpdateProfile, type Preference_Types } from "../lib/typesAndStuff";
 
 /* ---------------- Types ---------------- */
-type Role = "student"|"staff"|"admin"|"professor"|"ta"|"club_officer";
+/*type Role = "student"|"staff"|"admin"|"professor"|"ta"|"club_officer";
 type Year = "freshman"|"sophomore"|"junior"|"senior";
 type Visibility = "public"|"campus"|"private";
-type Preference_Types = "defaultPreference"|"preference1"|"preference2"
+type Preference_Types = "defaultPreference"|"preference1"|"preference2"|""
 
 type UserProfile = {
   uid: string;
@@ -46,10 +47,10 @@ type UserProfile = {
   createdAt?: string;
   updatedAt?: string;
   preferences: Preference_Types[];
-};
+};*/
 
 /* ---------------- Constants ---------------- */
-const YEAR_OPTIONS: Year[] = ["freshman","sophomore","junior","senior"];
+/*const YEAR_OPTIONS: Year[] = ["freshman","sophomore","junior","senior"];
 const VIS_OPTIONS: Visibility[] = ["public","campus","private"];
 const PRONOUN_OPTIONS = [
   "he/him","she/her","they/them","he/they","she/they","prefer not to say","self-describe" as const
@@ -66,7 +67,7 @@ const INTEREST_OPTIONS = [
   "entrepreneurship",
   "research",
   "greek-life",
-] as const;
+] as const;*/
 
 export default function Profile() {
   const nav = useNavigate();
@@ -107,7 +108,7 @@ export default function Profile() {
   const [friendsCountLive, setFriendsCountLive] = useState<number>(0);
   const [pendingCountLive, setPendingCountLive] = useState<number>(0);
 
-  const [preferences, setPreferencces] = useState(false);
+  const [preferences, setPreferencces] = useState<Preference_Types[]>([]);
   const [dark, setDark] = useState<boolean>(() => document.documentElement.classList.contains("dark"));
 
   /* ------------ Auth guard + load profile ------------- */
@@ -228,20 +229,7 @@ export default function Profile() {
       // Build phone E.164 (+1XXXXXXXXXX for US)
       const e164 = toE164US(phoneDisplay);
 
-      const body = {
-        name: displayName,
-        bio,
-        major: major || null,
-        year: year ?? null,
-        pronouns: pronounsToStore,
-        phone: e164,                 // store normalized value
-        visibility,
-        notificationPrefs: {
-          ...(profile?.notificationPrefs ?? {}),
-          eventReminders: eventReminders,
-        },
-        preferences: preferences,
-      };
+      const body = userObjUpdateProfile(displayName,bio,year,major,pronounsToStore,e164,visibility,profile,eventReminders,preferences);
       const r = await fetch("/api/users/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },

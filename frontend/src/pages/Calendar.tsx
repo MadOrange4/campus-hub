@@ -3,19 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import React, { useState, useMemo } from 'react';
 import "../calendar.css";
 import { CalendarDays } from 'lucide-react'; 
-
+import type { EventItem } from '../lib/typesAndStuff';
 // Define the EventItem type EXACTLY as in App.tsx
-export interface EventItem {
-  id: string;
-  title: string;
-  start: string; // ISO string
-  end?: string; // ISO string
-  location: string;
-  tags: string[];
-  bannerUrl?: string;
-  desc?: string; // Added optional desc
-  locationLatLng?: { lat: number; lng: number }; // Added optional locationLatLng
-}
+
 
 interface CalendarProps {
   currentDate: Date;
