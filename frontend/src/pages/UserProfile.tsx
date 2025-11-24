@@ -11,13 +11,14 @@ import {
   CheckCircle2,
   Clock,
 } from "lucide-react";
+import { userObjLoadProfile, type EventMini, type UserProfile } from "../lib/typesAndStuff";
 
-type Role = "student"|"staff"|"admin"|"professor"|"ta"|"club_officer";
+/*type Role = "student"|"staff"|"admin"|"professor"|"ta"|"club_officer";
 type Visibility = "public"|"campus"|"private";
 type Year = "freshman"|"sophomore"|"junior"|"senior"|"grad"|"alumni"|"staff"|"faculty"|"other";
-type Preference_Types = "defaultPreference"|"preference1"|"preference2"
+type Preference_Types = "defaultPreference"|"preference1"|"preference2"|""
 
-type PublicUser = {
+type UserProfile = {
   uid: string;
   email?: string;
   name?: string;
@@ -41,7 +42,7 @@ type EventMini = {
   start?: string;        // ISO
   location?: string;
   bannerUrl?: string;
-};
+};*/
 
 export default function UserProfilePage() {
   const { uid: profileUid } = useParams();
@@ -50,7 +51,7 @@ export default function UserProfilePage() {
   const [ready, setReady] = useState(false);
   const [meUid, setMeUid] = useState<string | null>(null);
 
-  const [userDoc, setUserDoc] = useState<PublicUser | null>(null);
+  const [userDoc, setUserDoc] = useState<UserProfile | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   const [attending, setAttending] = useState<EventMini[]>([]);
@@ -93,22 +94,7 @@ export default function UserProfilePage() {
           return;
         }
         const d = snap.data() || {};
-        setUserDoc({
-          uid: profileUid,
-          email: d.email,
-          name: d.name,
-          photoURL: d.photoURL,
-          primaryRole: d.primaryRole,
-          roles: d.roles || [],
-          year: d.year ?? null,
-          major: d.major ?? null,
-          bio: d.bio ?? "",
-          visibility: d.visibility || "campus",
-          isStaffVerified: !!d.isStaffVerified,
-          friendsCount: Number(d.friendsCount || 0),
-          pendingCount: Number(d.pendingCount || 0),
-          preferences: d.preferences || ["defaultPreference"],
-        });
+        setUserDoc(userObjLoadProfile(profileUid,d));
       } catch (e: any) {
         setErr(e.message || "Failed to load profile");
       }

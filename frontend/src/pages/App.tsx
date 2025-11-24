@@ -39,18 +39,8 @@ import {
   serverTimestamp,
   getCountFromServer,
 } from "firebase/firestore";
+import type { EventItem } from "../lib/typesAndStuff";
 
-type EventItem = {
-  id: string;
-  title: string;
-  start: string;
-  end?: string;
-  location: string;
-  tags: string[];
-  bannerUrl?: string;
-  desc?: string;
-  locationLatLng?: { lat: number; lng: number }; // <-- add this
-};
 
 export default function AppPage() {
   const nav = useNavigate();

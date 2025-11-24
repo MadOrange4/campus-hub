@@ -16,6 +16,7 @@ import type { User } from "firebase/auth"
 import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { isAllowedEmail } from "../lib/auth-domain";
 import { Eye, EyeOff, Mail, LogIn, ArrowLeft, UserRoundPenIcon } from "lucide-react";
+import { toObj,userObjDefaults } from "../lib/typesAndStuff";
 
 const API_PREFIX = "/api"; 
 
@@ -43,44 +44,14 @@ export default function Login() {
       idtr.claims.role === "admin" ||
       (Array.isArray(idtr.claims.roles) && idtr.claims.roles.includes("admin"));
     //TODO we should reduce code duplication among login, profile, register, userprofile (and maybe more) here
-    const base = {
-      uid: u.uid,
-      email: (u.email ?? "").toLowerCase(),
-      name: u.displayName ?? "",
-      photoURL: u.photoURL ?? "",
-      nameLower: (u.displayName ?? "").toLowerCase(),
-      emailLower: (u.email ?? "").toLowerCase(),
-      visibility: "campus",
-      notificationPrefs: {
-        eventReminders: true,
-        emailUpdates: false,
-        push: true,
-      },
-      domainOk: (u.email ?? "").toLowerCase().endsWith("@umass.edu"),
-      updatedAt: serverTimestamp(),
-    };
-
+    const base = toObj(u);
+    
     if (!snap.exists()) {
       // FIRST TIME ONLY: set role based on claims (default: student)
       const role = isAdminClaim ? "admin" : "student";
       await setDoc(
         ref,
-        {
-          ...base,
-          primaryRole: role,
-          roles: [role],
-          bio: "",
-          pronouns: null,
-          phone: null,
-          year: null,
-          major: null,
-          isStaffVerified: false,
-          createdAt: serverTimestamp(),
-          // nice-to-have counters (optional)
-          friendsCount: 0,
-          pendingCount: 0,
-          preferences: ["defaultPreferences"]
-        },
+        userObjDefaults(base,role),
         { merge: true }
       );
     } else {

@@ -241,11 +241,11 @@ def verify_token(req: Request):
     try:
         decoded = fb_auth.verify_id_token(token)
     except Exception:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid ID token")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid ID token")#Error here function has no attribute HTTP_401_UNAUTHORIZED
 
     email = (decoded.get("email") or "").lower()
     if not email.endswith(f"@{ALLOWED_DOMAIN}"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="UMass email required")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="UMass email required") 
 
     provider = (decoded.get("firebase") or {}).get("sign_in_provider")
     if provider == "password" and not decoded.get("email_verified", False):
@@ -256,7 +256,7 @@ def verify_token(req: Request):
 Role = Literal["student","staff","admin","professor","ta","club_officer"]
 Year = Literal["freshman","sophomore","junior","senior","grad","alumni","staff","faculty","other"]
 Visibility = Literal["public","campus","private"]
-Preference_Types = Literal["defaultPreference","preference1","preference2"]
+Preference_Types = Literal["defaultPreference","preference1","preference2",""]
 
 class UserProfile(BaseModel):
     uid: str
@@ -297,7 +297,7 @@ def _defaults_for_new_user(uid: str, email: str, name: Optional[str], photo: Opt
         "pronouns": None,
         "phone": None,
         #TODO something may be wrong...
-        "preferences": ["defaultPreference"],
+        "preferences": [""],
         "visibility": "campus",
         "notificationPrefs": {"eventReminders": True, "emailUpdates": False, "push": True},
         "domainOk": email.endswith(f"@{ALLOWED_DOMAIN}"),
