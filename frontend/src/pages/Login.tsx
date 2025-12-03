@@ -5,20 +5,15 @@ import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
-  fetchSignInMethodsForEmail,
-  linkWithPopup,
-  linkWithCredential,
-  EmailAuthProvider,
   sendEmailVerification,
   sendPasswordResetEmail
 } from "firebase/auth";
-import type { User } from "firebase/auth"
-import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
+import type { User } from "firebase/auth";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import { isAllowedEmail } from "../lib/auth-domain";
 import { Eye, EyeOff, Mail, LogIn, ArrowLeft, UserRoundPenIcon } from "lucide-react";
-import { toObj,userObjDefaults } from "../lib/typesAndStuff";
-
-const API_PREFIX = "/api"; 
+import { toObj, userObjDefaults } from "../lib/typesAndStuff";
+ 
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -26,11 +21,8 @@ export default function Login() {
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
-  // Add state to track if we're in the forgot password mode
-  const [isForgotPasswordMode, setIsForgotPasswordMode] = useState(false); 
+  
   const nav = useNavigate();
-
-  // Firestore upsert
 
   // Firestore upsert (non-destructive for roles)
   async function upsertUserDoc(u: User) {
@@ -89,44 +81,51 @@ export default function Login() {
     }
   }
 
-  // Make sure you import the fetch function or have it globally available
-  // import { fetch } from 'your-fetch-library'; // or just use window.fetch
-
   async function handleForgotPassword() {
     setErr(null);
     const em = email.trim().toLowerCase();
 
+    // 1. Basic validation
+    if (!em) {
+      setErr("Please enter your email address in the field above first.");
+      return;
+    }
+    
     if (!isAllowedEmail(em)) {
-      setErr("Please enter your @umass.edu email first.");
+      setErr("Please use your @umass.edu email.");
       return;
     }
 
     setLoading(true);
     try {
-      // --- UPDATED: Call your FastAPI backend endpoint ---
-      const response = await fetch(`${API_PREFIX}/auth/forgot-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: em }),
-      });
+      // 2. Configure redirection URL
+      // This is where the user goes after clicking the link in the email.
+      // It must point to the route that renders HandleAuthActionPage.tsx
+      const actionCodeSettings = {
+        url: window.location.origin + '/auth/action', 
+        handleCodeInApp: true,
+      };
 
-      if (!response.ok) {
-        // Handle potential errors from your backend API
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to send reset link.");
-      }
+      // 3. Send email using Firebase Client SDK
+      // NO fetch() call needed!
+      await sendPasswordResetEmail(auth, em, actionCodeSettings);
+
+      // 4. Success message
+      setErr(`If ${em} is registered, a password reset link has been sent.`);
       
-      // Display a generic success message to prevent email enumeration
-      setErr(`If the email is registered, a link has been sent.`);
-      // Optional: switch back to login mode if you are using isForgotPasswordMode state
-      // setIsForgotPasswordMode(false); 
-
-    } catch (error: any) { 
-        console.error(error);
-        // Display a user-friendly generic error message
-        setErr("Failed to send password reset email. Please try again later.");
-    } finally { 
-        setLoading(false); 
+    } catch (error: any) {
+      console.error("Forgot Password Error:", error);
+      
+      if (error.code === 'auth/user-not-found') {
+        // Security best practice: Don't reveal if user exists
+        setErr(`If ${em} is registered, a password reset link has been sent.`);
+      } else if (error.code === 'auth/invalid-email') {
+        setErr("That email address is invalid.");
+      } else {
+        setErr("Failed to send reset email. " + (error.message || "Try again later."));
+      }
+    } finally {
+      setLoading(false);
     }
   }
 

@@ -1,15 +1,65 @@
-/* src/calendar.css - Transformed for full-view calendar */
+/* src/calendar.css - Dark Mode Compatible */
 
-/* Global container styling (replacing .modal-overlay and .calendar-modal) */
+/* --- THEME VARIABLES --- */
+:root {
+  /* Light Mode Defaults */
+  --cal-bg: #ffffff;
+  --cal-surface: #ffffff;
+  --cal-text-main: #1f2937;
+  --cal-text-muted: #666666;
+  --cal-border: #e5e7eb; /* Light gray */
+  --cal-hover: #f3f4f6;
+  
+  --cal-today-bg: #fef0f0;
+  --cal-today-border: #f9dcdc;
+  --cal-today-shadow: rgba(255, 99, 71, 0.1);
+  
+  --cal-popover-bg: #ffffff;
+  --cal-popover-shadow: rgba(0, 0, 0, 0.15);
+  --cal-tag-bg: #f0f0f0;
+  
+  --cal-btn-border: #ccc;
+  --cal-btn-hover: #f0f0f0;
+}
+
+/* Dark Mode Overrides (Applied if .dark class exists OR system prefers dark) */
+:root[class~="dark"], 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --cal-bg: #1c1c1e; /* Dark background */
+    --cal-surface: #1c1c1e;
+    --cal-text-main: #f3f4f6; /* Off-white text */
+    --cal-text-muted: #9ca3af; /* Gray text */
+    --cal-border: #333333; /* Dark border */
+    --cal-hover: #2c2c2e;
+    
+    --cal-today-bg: #451a1a; /* Dark Red background */
+    --cal-today-border: #7f1d1d;
+    --cal-today-shadow: rgba(0, 0, 0, 0.5);
+    
+    --cal-popover-bg: #2c2c2e; /* Slightly lighter dark for popover */
+    --cal-popover-shadow: rgba(0, 0, 0, 0.5);
+    --cal-tag-bg: #3a3a3c;
+    
+    --cal-btn-border: #444;
+    --cal-btn-hover: #3a3a3c;
+  }
+}
+
+/* --- STYLES --- */
+
+/* Global container styling */
 .full-calendar-container {
   display: flex;
   flex-direction: column;
-  background-color: #fff; /* White background for the calendar box */
+  background-color: var(--cal-bg);
+  color: var(--cal-text-main);
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px var(--cal-popover-shadow);
   padding: 20px;
-  max-width: 1000px; /* Example max width */
-  margin: 40px auto; /* Centering the calendar on the gray background */
+  max-width: 1000px;
+  margin: 40px auto;
+  border: 1px solid var(--cal-border); /* Added subtle border for dark mode definition */
 }
 
 /* Calendar Header */
@@ -18,70 +68,62 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  padding-bottom: 0; /* Remove bottom padding/border from old modal */
+  padding-bottom: 0;
   border-bottom: none;
 }
 
-/* Original controls, now used just for Back button and styling */
 .header-controls {
-  /* Let it take only the necessary width (content width) */
   flex: 0 1 auto; 
 }
 
-/* 2. CENTER Section: Month/Year and Today button */
 .header-center-controls {
   display: flex;
   align-items: center;
   gap: 10px;
   justify-content: center; 
-  flex: 1; /* Allow the center to expand and fill the remaining space */
+  flex: 1;
 }
 
-/* Right side placeholder */
 .header-controls-placeholder {
-  /* Set its width to match the Back button for optical centering */
   flex: 0 1 auto; 
-  width: 93px; /* Approximate width of the "Back" button for symmetry. You may need to tweak this value. */
+  width: 93px; 
 }
 
-.header-controls button {
+/* Buttons */
+.header-controls button,
+.header-center-controls button {
   background: none;
-  border: 1px solid #ccc;
+  border: 1px solid var(--cal-btn-border);
+  color: var(--cal-text-main);
   border-radius: 6px;
   padding: 8px 12px;
   font-size: 1em;
   cursor: pointer;
   display: flex;
   align-items: center;
-  transition: background-color 0.1s;
+  transition: background-color 0.1s, border-color 0.1s;
 }
 
-.header-center-controls button { 
-  background: none;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 1em;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  transition: background-color 0.1s;
-}
-
-.header-controls button:hover {
-  background-color: #f0f0f0;
+.header-controls button:hover,
+.header-center-controls button:hover {
+  background-color: var(--cal-btn-hover);
 }
 
 .month-nav {
   display: flex;
   align-items: center;
-  border: 1px solid #ccc;
+  border: 1px solid var(--cal-btn-border);
   border-radius: 6px;
 }
 
 .month-nav button {
   border: none;
   padding: 8px 12px;
+  color: var(--cal-text-main);
+}
+.month-nav button:hover {
+  background-color: var(--cal-btn-hover);
+  border-radius: 4px;
 }
 
 .month-nav h2 {
@@ -89,6 +131,7 @@
   font-weight: 600;
   padding: 0 10px;
   margin: 0;
+  color: var(--cal-text-main);
 }
 
 /* Calendar Grid */
@@ -101,7 +144,7 @@
 
 .weekday {
   font-weight: 500;
-  color: #666;
+  color: var(--cal-text-muted);
   padding: 10px 5px;
   text-align: left;
 }
@@ -111,17 +154,17 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  min-height: 100px; /* Give cells space for content */
+  min-height: 100px;
   padding: 10px;
   cursor: pointer;
   margin: 2px;
-  background-color: #fff;
-  border-radius: 8px; /* Rounded corners for cells */
-  border: 1px solid transparent; /* No border by default */
+  background-color: var(--cal-surface);
+  color: var(--cal-text-main);
+  border-radius: 8px;
+  border: 1px solid transparent; 
   transition: background-color 0.1s, box-shadow 0.1s;
 }
 
-/* Empty cells are just hidden */
 .day-cell.empty {
   visibility: hidden;
   cursor: default;
@@ -129,16 +172,15 @@
   box-shadow: none;
 }
 
-/* Hover effect on day cell */
 .day-cell:not(.empty):hover {
-  background-color: #f7f7f7;
+  background-color: var(--cal-hover);
 }
 
-/* Current Day Styling (Oct 20 in the image) */
+/* Current Day Styling */
 .day-cell.today {
-  background-color: #fef0f0; /* Light red/pink background */
-  border: 1px solid #f9dcdc;
-  box-shadow: 0 0 5px rgba(255, 99, 71, 0.1);
+  background-color: var(--cal-today-bg);
+  border: 1px solid var(--cal-today-border);
+  box-shadow: 0 0 5px var(--cal-today-shadow);
 }
 
 .day-cell .day-number {
@@ -151,7 +193,7 @@
   position: absolute;
   top: 5px;
   right: 5px;
-  background-color: #a52a2a; /* Brown/Dark Red */
+  background-color: #a52a2a; 
   color: white;
   padding: 2px 6px;
   border-radius: 4px;
@@ -174,42 +216,41 @@
   margin-right: 4px;
 }
 
-/* Colors from the legend in the image */
-.dot-today { background-color: #a52a2a; } /* Brown */
-.dot-career { background-color: #1abc9c; } /* Green */
-.dot-sports { background-color: #ff69b4; } /* Pink */
-.dot-holiday { background-color: #9b59b6; } /* Purple */
+/* Dot colors (Keep these fixed, they usually work on dark backgrounds too) */
+.dot-today { background-color: #a52a2a; }
+.dot-career { background-color: #1abc9c; }
+.dot-sports { background-color: #ff69b4; }
+.dot-holiday { background-color: #9b59b6; }
 
 /* Event Popover */
 .event-popover-wrapper {
   position: absolute;
-  /* This wrapper needs to be positioned relative to the cell, but rendered outside
-     to prevent clipping. For a simple CSS/React solution, we'll keep it within the
-     grid context and adjust positioning. In a real app, this is often a Portal. */
   z-index: 10;
   width: 350px;
-  top: 90%; /* Position below the cell */
+  top: 90%;
   left: 50%;
   transform: translateX(-50%);
   text-align: left;
-  pointer-events: none; /* Allows clicks to pass through if not needed */
+  pointer-events: none;
 }
 
 .event-popover {
-  background-color: white;
+  background-color: var(--cal-popover-bg);
+  color: var(--cal-text-main);
+  border: 1px solid var(--cal-border);
   border-radius: 8px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 15px var(--cal-popover-shadow);
   padding: 15px;
   max-height: 400px;
   overflow-y: auto;
-  pointer-events: auto; /* Re-enable pointer events for the popover content */
+  pointer-events: auto;
 }
 
 .popover-date {
   font-size: 0.85em;
-  color: #666;
+  color: var(--cal-text-muted);
   margin-bottom: 10px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--cal-border);
   padding-bottom: 5px;
 }
 
@@ -228,6 +269,7 @@
   font-size: 1em;
   font-weight: 600;
   margin: 0;
+  color: var(--cal-text-main);
 }
 
 .popover-event-item h4 .event-dot {
@@ -236,8 +278,8 @@
 
 .popover-event-details {
   font-size: 0.9em;
-  color: #333;
-  margin: 5px 0 5px 16px; /* Indent to align with text */
+  color: var(--cal-text-muted);
+  margin: 5px 0 5px 16px;
 }
 
 .popover-tags-container {
@@ -248,8 +290,8 @@
 }
 
 .popover-tag {
-  background-color: #f0f0f0;
-  color: #666;
+  background-color: var(--cal-tag-bg);
+  color: var(--cal-text-muted);
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 0.75em;
@@ -262,16 +304,8 @@
     align-items: center;
     padding-top: 15px;
     margin-top: 15px;
-    border-top: 1px solid #eee;
-}
-
-.calendar-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: 15px;
-    margin-top: 15px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--cal-border);
+    color: var(--cal-text-muted);
 }
 
 .legend {
@@ -284,5 +318,10 @@
   display: flex;
   align-items: center;
   font-size: 0.9em;
-  color: #444;
+  color: var(--cal-text-main);
+}
+
+.footer-instruction {
+    font-size: 0.85em;
+    color: var(--cal-text-muted);
 }
