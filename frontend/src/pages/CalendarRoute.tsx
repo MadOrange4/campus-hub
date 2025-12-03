@@ -1,7 +1,8 @@
 // src/pages/CalendarRoute.tsx - Transformed & Refined
 import { useEffect, useState, useMemo} from "react";
 // Import the updated EventItem type from the transformed Calendar file
-import Calendar, { type EventItem } from "./Calendar"; 
+import Calendar from "./Calendar";
+import type { EventItem } from "../lib/typesAndStuff"; 
 import { db } from "../lib/firebase";
 import {
   collection,
@@ -12,7 +13,6 @@ import {
   Timestamp, // Import Timestamp for consistency with App.tsx mapping helpers
 } from "firebase/firestore";
 import { useNavigate } from "react-router-dom"; 
-import { CalendarDays } from "lucide-react";
 
 interface FirebaseUser {
   uid: string;
@@ -60,7 +60,7 @@ export default function CalendarRoute({
 }) {
   const [allEvents, setAllEvents] = useState<EventItem[]>([]);
   const [attendingEventIds, setAttendingEventIds] = useState<Set<string>>(new Set()); 
-  const [showOnlyAttending, setShowOnlyAttending] = useState(true); 
+  const [showOnlyAttending, setShowOnlyAttending] = useState(false); 
   const navigate = useNavigate();
 
   if (!currentUser || !currentUser.uid) {
