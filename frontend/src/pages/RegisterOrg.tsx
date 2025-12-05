@@ -1,9 +1,8 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { auth, db } from "../lib/firebase";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { doc, getDoc, deleteDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { KeyRound, Mail, Lock, Building2, User, FileText } from "lucide-react";
+ import {useState } from "react";
+import {Link } from "react-router-dom";
+import {auth, db } from "../lib/firebase";
+import {collection, addDoc, serverTimestamp } from "firebase/firestore";
+import {Mail, Building2, User, FileText,Users} from "lucide-react";
 
 export default function OrgApplication() {
   const [orgName, setOrgName] = useState("");
@@ -30,6 +29,7 @@ export default function OrgApplication() {
       setLoading(true);
 
       // Add a new document to the "orgApplications" collection
+      const user = auth.currentUser!;
       await addDoc(collection(db, "orgApplications"), {
         orgName,
         orgNameLower: orgName.toLowerCase(),
@@ -37,7 +37,8 @@ export default function OrgApplication() {
         contactEmail: contactEmail.toLowerCase(),
         social,
         description,
-        status: "pending", // Admin can review this
+        status: "pending",
+        createdBy: user.uid,
         submittedAt: serverTimestamp(),
       });
 
@@ -100,7 +101,7 @@ export default function OrgApplication() {
               className="w-full rounded-xl border border-border bg-surface px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-brand"
               value={contactName}
               onChange={(e) => setContactName(e.target.value)}
-              placeholder="e.g. 'Jane Doe'"
+              placeholder="e.g. 'John Smith'"
               type="text"
               required
             />
@@ -137,9 +138,9 @@ export default function OrgApplication() {
               className="w-full min-h-[80px] rounded-xl border border-border bg-surface px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-brand"
               value={social}
               onChange={(e) => setSocial(e.target.value)}
-              placeholder="Instagram page, organizaiton website, etc..."
+              placeholder="Instagram page, Organizaiton website, etc..."
             />
-            <FileText className="absolute right-3 top-3.5 size-4 text-text-muted" />
+            <Users className="absolute right-3 top-3.5 size-4 text-text-muted" />
           </div>
 
           <button
