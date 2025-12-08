@@ -40,7 +40,7 @@ def grant_admin_by_email(email: str):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage:\n  python grant_admin.py <uid|email>")
+        print("Usage:\n  python give_admin.py <uid|email>")
         sys.exit(1)
 
     identifier = sys.argv[1]
