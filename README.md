@@ -80,9 +80,6 @@ If not, reach me.
 ## 3. Admin Set-up
 Event creation is only available for user accounts with the **admin** role.
 
-Event deletion is **unavailable** for testing.
- *(data corruption problem)*
-
  ## 4. Friend System
 - Friends:
     - users/{uid}/friends/{friendUid} → { uid, since, name?, photoURL? }
